@@ -31,4 +31,4 @@ Data should be formatted so that the rows are the categories and the columns are
 
 # Perform a parameter search or perform multiple restarts
 ```
-python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --output_file example_data/POLEMSI_outputs/ --parameters_file POLE_MSI_params.txt --max_iter 20000 --labeled --tolerance 1e-7
+python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --output_file example_data/POLEMSI_outputs/ --parameters_file POLEMSI_params.txt --max_iter 20000 --labeled --tolerance 1e-7
