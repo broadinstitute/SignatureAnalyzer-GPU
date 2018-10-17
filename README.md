@@ -24,7 +24,7 @@ Note that as part of this work we derived the form for a mixed prior (e.g. L1 on
 
 Example command line for a single run of SignatureAnalyzer-GPU:
 ```
-$ python SignatureAnalyzer-GPU.py --data data_matrix --max_iter=100000 --output_file output_file_stem --prior_on_W L1 --prior_on_H L2
+$ python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --max_iter=100000 --output_file POLEMSI_EXAMPLE --prior_on_W L1 --prior_on_H L2 --labeled
 ```
 Data should be formatted so that the rows are the categories and the columns are the samples. For a full description of inputs and outputs please see the repository wiki. 
 
