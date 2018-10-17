@@ -36,4 +36,4 @@ NOTE this is automatically configured to run on a single or multiple GPUs just r
 ```
 python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --output_file example_data/POLEMSI_outputs/ --parameters_file POLEMSI_params.txt --max_iter 20000 --labeled --tolerance 1e-7
 ```
-Again for a full description of inputs and outputs related to parameters_file runs see the repository wiki. 
+For a full description of inputs and outputs related to parameters_file runs see the repository wiki. 
