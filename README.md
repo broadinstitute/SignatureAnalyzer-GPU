@@ -30,5 +30,7 @@ Data should be formatted so that the rows are the categories and the columns are
 
 
 # Perform a parameter search or perform multiple restarts
+The short run time of SignatureAnalyzer-GPU enables performing a parameter search and trying many hyperparameter values or running the same parameter values many times to find a maximum likely decomposition or characterize the modal number of cluster/signatures for some setting. To perform such an analysis simply save parameters you would like to run in a tsv and pass it to the --parameters_file argument. We the parameters file and count matrix used to generate Figure 1B from the manuscript. 
 ```
 python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --output_file example_data/POLEMSI_outputs/ --parameters_file POLEMSI_params.txt --max_iter 20000 --labeled --tolerance 1e-7
+```
