@@ -29,7 +29,7 @@ $ python SignatureAnalyzer-GPU.py --data data_matrix --max_iter=100000 --output_
 Data should be formatted so that the rows are the categories and the columns are the samples. For a full description of inputs and outputs please see the repository wiki. 
 
 
-# Perform a parameter search or perform multiple restarts
+# How to run an array of decompositions
 The short run time of SignatureAnalyzer-GPU enables performing a parameter search or running the same parameter settings many times to find a maximum likely decomposition or characterize the modal number of clusters/signatures for some setting. To perform such an analysis simply save parameters you would like to run in a tsv and pass it to the --parameters_file argument. We provide the parameters file and count matrix used to generate Figure 1B from the manuscript in the example_data directory. 
 
 NOTE this is automatically configured to run on a single or multiple GPUs just run as usual to perform parallel runs. 
