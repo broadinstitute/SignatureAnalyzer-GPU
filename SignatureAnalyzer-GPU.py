@@ -164,10 +164,7 @@ def run_NMF_parameter_search(parameters,data,labeled,max_iter=10000,report_freq=
                                                   ,H_prior=parameters['prior_on_H'][parameter_index]
                                                   ,W_prior=parameters['prior_on_W'][parameter_index])
 
-            #h_ = self.update_H(H, W, lambda_, phi, V, eps_)
-            #w_ = self.update_W(h_, W, lambda_, phi, V, eps_)
-            #lam_ = self.lambda_update(W, H, b0, C, eps_)
-
+    
                 h_ = method.update_H(job_dict[parameters['label'][parameter_index]].H,
                                  job_dict[parameters['label'][parameter_index]].W,
                                  job_dict[parameters['label'][parameter_index]].Lambda,
@@ -187,20 +184,6 @@ def run_NMF_parameter_search(parameters,data,labeled,max_iter=10000,report_freq=
                                         job_dict[parameters['label'][parameter_index]].b,
                                         job_dict[parameters['label'][parameter_index]].C,
                                         job_dict[parameters['label'][parameter_index]].eps_)
-
-            #h_, w_, lambda_ = method.algorithm(job_dict[parameters['label'][parameter_index]].W,
-            #                                   job_dict[parameters['label'][parameter_index]].H,
-            #                                   job_dict[parameters['label'][parameter_index]].V,
-            #                                   job_dict[parameters['label'][parameter_index]].Lambda,
-            #                                   job_dict[parameters['label'][parameter_index]].C,
-            #                                   job_dict[parameters['label'][parameter_index]].b,
-            #                                   job_dict[parameters['label'][parameter_index]].eps_,
-            #                                   job_dict[parameters['label'][parameter_index]].phi)
-
-            #gen_H, h_prime, gen_W, w_prime, gen_Lambda, lambda_prime = NMF_functions.apply_updates(
-            #    job_dict[parameters['label'][parameter_index]].H,
-            #    job_dict[parameters['label'][parameter_index]].W,
-            #    job_dict[parameters['label'][parameter_index]].Lambda)
 
                 gen_H, h_prime = NMF_functions.assign_updates(job_dict[parameters['label'][parameter_index]].H)
                 gen_W, w_prime = NMF_functions.assign_updates(job_dict[parameters['label'][parameter_index]].W)
