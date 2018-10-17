@@ -26,7 +26,7 @@ Example command line for a single run of SignatureAnalyzer-GPU:
 ```
 $ python SignatureAnalyzer-GPU.py --data data_matrix --max_iter=100000 --output_file output_file_stem --prior_on_W L1 --prior_on_H L2
 ```
-Data should be formatted NxM where M is the number of channels and N is the number of samples
+Data should be formatted so that the rows are the categories and the columns are the samples. 
 
 
 # Perform a parameter search or perform multiple restarts
