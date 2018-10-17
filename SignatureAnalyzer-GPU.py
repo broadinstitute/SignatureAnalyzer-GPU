@@ -282,7 +282,7 @@ def run_NMF_parameter_search(parameters,data,labeled,max_iter=10000,report_freq=
             file.write('%s\n' % (np.array2string(cost_new[i])))
             file.close()
 
-            with open(output_directory + '/'+parameters['label'][result_index]+  '_results.pkl' 'wb') as f:
+            with open(output_directory + '/'+parameters['label'][result_index]+  '_results.pkl', 'wb') as f:
                 pickle.dump([W_active,H_active,Lambda_k], f)
 
 
