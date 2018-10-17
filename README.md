@@ -26,7 +26,7 @@ Example command line for a single run of SignatureAnalyzer-GPU:
 ```
 $ python SignatureAnalyzer-GPU.py --data data_matrix --max_iter=100000 --output_file output_file_stem --prior_on_W L1 --prior_on_H L2
 ```
-Data should be formatted so that the rows are the categories and the columns are the samples. 
+Data should be formatted so that the rows are the categories and the columns are the samples. For a full description of inputs and outputs please see the repository wiki. 
 
 
 # Perform a parameter search or perform multiple restarts
