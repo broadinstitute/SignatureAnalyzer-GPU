@@ -16,7 +16,7 @@ $ source venv/bin/activate .
 ```
 
 # How to run
-SignatureAnalyzer runs on a count matrix (passed to the argument --data) and performs regularized NMF (Bayes NMF). You can specify the regularization you want on the resulting W and H matrices by using the prior_on_W and prior_on_H arguments. L1 is equivalent to an exponential prior and L2 is half-normal.
+SignatureAnalyzer runs on a count matrix (passed to the argument --data) and performs regularized NMF (Bayes NMF). You can specify the regularization you want on the resulting W and H matrices by using the arguments --prior_on_W and --prior_on_H . Passing "L1" is equivalent to an exponential prior and "L2" is half-normal.
 
 For mathematical details see: https://arxiv.org/pdf/1111.6085.pdf. 
 
