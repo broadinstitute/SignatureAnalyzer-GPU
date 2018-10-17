@@ -30,3 +30,5 @@ Data should be formatted NxM where M is the number of channels and N is the numb
 
 
 # Perform a parameter search or perform multiple restarts
+```
+python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --output_file example_data/POLEMSI_outputs/ --parameters_file POLE_MSI_params.txt --max_iter 20000 --labeled --tolerance 1e-7
