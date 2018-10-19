@@ -20,7 +20,7 @@ SignatureAnalyzer runs on a count matrix (passed to the argument --data) and per
 
 For mathematical details see:
 
-1. Tan, V. Y. F., Edric, C. ´ & Evotte, F. ´. Automatic Relevance Determination in Nonnegative Matrix Factorization with the β-Divergence. (2012). (https://arxiv.org/pdf/1111.6085.pdf)
+1. Tan, V. Y. F., Edric, C.  & Evotte, F. Automatic Relevance Determination in Nonnegative Matrix Factorization with the β-Divergence. (2012). (https://arxiv.org/pdf/1111.6085.pdf)
 
 SignatureAnalyzer-CPU source publications:
 
