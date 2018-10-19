@@ -18,7 +18,12 @@ $ source venv/bin/activate .
 # How to run a single decomposition
 SignatureAnalyzer runs on a count matrix (passed to the argument --data) and performs regularized NMF (Bayes NMF). You can specify the regularization you want on the resulting W and H matrices by using the arguments --prior_on_W and --prior_on_H . Passing "L1" is equivalent to an exponential prior and "L2" is half-normal.
 
-For mathematical details see: https://arxiv.org/pdf/1111.6085.pdf. 
+For mathematical details see: https://arxiv.org/pdf/1111.6085.pdf and source publications:
+
+1. Kim, J. et al. Somatic ERCC2 mutations are associated with a distinct genomic signature in urothelial tumors. Nat. Genet. 48, 600–606 (2016).
+
+2. Yeh, P. et al. Circulating tumour DNA reflects treatment response and clonal evolution in chronic lymphocytic leukaemia. Nat. Commun. 8, (2017).
+
 
 Note that as part of this work we derived the form for a mixed prior (e.g. L1 on W and L2 on H) see the supplemental note in the repo. 
 
