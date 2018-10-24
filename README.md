@@ -8,7 +8,7 @@ git clone https://github.com/broadinstitute/SignatureAnalyzer-GPU.git
 # Setup
 For easy set up you can create a python virtual enviroment which matches our own: 
 ```
-$ python3 -m venv venv/
+$ virtualenv venv
 
 $ source venv/bin/activate .
 
