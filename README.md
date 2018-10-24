@@ -43,6 +43,6 @@ The short run time of SignatureAnalyzer-GPU enables performing a parameter searc
 
 NOTE this is automatically configured to run on a single or multiple GPUs just run as usual to perform parallel runs. 
 ```
-python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --output_file example_data/POLEMSI_outputs/ --parameters_file POLEMSI_params.txt --max_iter 20000 --labeled --tolerance 1e-7
+python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --output_file example_data/POLEMSI_outputs/ --parameters_file example_data/POLEMSI_params.txt --max_iter 20000 --labeled --tolerance 1e-7
 ```
 For a full description of inputs and outputs related to parameters_file runs see the repository wiki. 
