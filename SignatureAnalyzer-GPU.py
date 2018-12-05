@@ -31,12 +31,12 @@ class ARD_NMF:
     def __init__(self,dataset,has_labels,phi,a,b,K0 = None,prior_W = 'L1',prior_H = 'L2'):
         self.eps_ = tf.constant(1.e-10,dtype=tf.float32)
         self.input_file = dataset
-
+        print('Reading data frame')
         if has_labels:
             self.dataset = pd.read_csv(dataset, sep='\t', header=0,index_col=0)
         else:
             self.dataset = pd.read_csv(dataset, sep='\t', header=None)
-            
+        print('Data loaded. Constructing class for NMF')
         self.V0 = self.dataset.values[np.sum(self.dataset, axis=1) > 0, :]
         self.V = np.array(self.V0 - np.min(self.V0) + 1.e-30, dtype=np.float32)
         self.V_max = np.max(self.V)
@@ -56,7 +56,7 @@ class ARD_NMF:
         self.b = b
         self.channel_names = self.dataset.index
         self.sample_names = self.dataset.columns
-
+        print('NMF class initalized')
 
     def initalize_data(self):
 
@@ -132,15 +132,12 @@ def run_NMF_parameter_search(parameters,data,labeled,max_iter=10000,report_freq=
     n_GPUs = len(GPUs)
     parameter_batches = int(np.ceil(np.true_divide(len(parameters), n_GPUs)))
     job_dict = dict()
-    for i,r in parameters.iterrows():
-        job_dict[r['label']] = ARD_NMF(data, labeled,
-        r['phi'], r['a'], r['b'], r['K0'], r['prior_on_W'], r['prior_on_H'])
-        job_dict[parameters['label'][i]].initalize_data()
     parameter_index = 0
     objectives = list()
     n_active = list()
-
+    job_counter = 0
     for batch in range(0,parameter_batches):
+        labels = []
         h_array = list()
         w_array = list()
         lambda_array = list()
@@ -154,6 +151,11 @@ def run_NMF_parameter_search(parameters,data,labeled,max_iter=10000,report_freq=
         updates_prime_Lambda = list()
         lam_previous_array = list()
         for G in GPUs:
+            r = parameters.iloc[job_counter]
+            job_dict[r['label']] = ARD_NMF(data, labeled,
+                                           r['phi'], r['a'], r['b'], r['K0'], r['prior_on_W'], r['prior_on_H'])
+            job_dict[parameters['label'][i]].initalize_data()
+            labels.append(r['label'])
             if parameter_index <= len(parameters):
              with tf.device(G):
                 print('%%%%%%%%%%%%%%%')
@@ -284,8 +286,9 @@ def run_NMF_parameter_search(parameters,data,labeled,max_iter=10000,report_freq=
 
             with open(output_directory + '/'+parameters['label'][result_index]+  '_results.pkl', 'wb') as f:
                 pickle.dump([W_active,H_active,Lambda_k], f)
-
-
+        for label in labels:
+            job_dict[label] = []
+            
     parameters['objective'] = objectives
     parameters['n_active'] = nsig
     parameters.to_csv(output_directory + '/parameters_with_results.txt',sep='\t',index=None)
