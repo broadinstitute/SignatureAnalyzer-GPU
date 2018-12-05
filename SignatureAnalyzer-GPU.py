@@ -299,7 +299,7 @@ def main():
     parser.add_argument('--max_iter', help='maximum iterations', required=False, default=10000, type=int)
     parser.add_argument('--del_', help='Early stop condition based on lambda change', required=False, default=1,
                         type=int)
-    parser.add_argument('--tolerance', help='Early stop condition based on max lambda entry', required=False, default=1e-5,
+    parser.add_argument('--tolerance', help='Early stop condition based on max lambda entry', required=False, default=1e-6,
                         type=float)
     parser.add_argument('--phi', help='dispersion parameter see paper for discussion of choosing phi '
                                       'default = 1', required=False, default=1.0, type=float)
@@ -386,7 +386,8 @@ def main():
         times = list()
         with tf.Session() as sess:
             sess.run(init_op)
-
+            print([iter, max_iter])
+            print([deltrack, tol_])
             while deltrack >= tol_ and iter < max_iter:
                 h_new,w_new,lam_new = sess.run([h_, w_,lambda_])
 
@@ -398,6 +399,8 @@ def main():
                 sess.run([gen_W,gen_H,gen_Lambda],feed_dict={h_prime:h_new,w_prime:w_new,lambda_prime:lam_new})
                 deltrack = np.max(np.true_divide(np.abs(lam_new -lam_previous), (lam_previous+1e-5)))
                 lam_previous = lam_new
+                print([iter, max_iter])
+                print([deltrack, tol_])
 
         nonzero_idx = (np.sum(h_new, axis=1) + np.sum(w_new, axis=0)) > active_thresh
         W_active = w_new[:, nonzero_idx]
