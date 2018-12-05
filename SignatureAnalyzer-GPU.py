@@ -30,12 +30,7 @@ class ARD_NMF:
     """
     def __init__(self,dataset,has_labels,phi,a,b,K0 = None,prior_W = 'L1',prior_H = 'L2'):
         self.eps_ = tf.constant(1.e-10,dtype=tf.float32)
-        self.input_file = dataset
-        print('Reading data frame')
-        if has_labels:
-            self.dataset = pd.read_csv(dataset, sep='\t', header=0,index_col=0)
-        else:
-            self.dataset = pd.read_csv(dataset, sep='\t', header=None)
+        self.dataset = dataset
         print('Data loaded. Constructing class for NMF')
         self.V0 = self.dataset.values[np.sum(self.dataset, axis=1) > 0, :]
         self.V = np.array(self.V0 - np.min(self.V0) + 1.e-30, dtype=np.float32)
@@ -288,7 +283,7 @@ def run_NMF_parameter_search(parameters,data,labeled,max_iter=10000,report_freq=
                 pickle.dump([W_active,H_active,Lambda_k], f)
         for label in labels:
             job_dict[label] = []
-            
+
     parameters['objective'] = objectives
     parameters['n_active'] = nsig
     parameters.to_csv(output_directory + '/parameters_with_results.txt',sep='\t',index=None)
@@ -332,6 +327,18 @@ def main():
                                                   'indicates the output stem of the results from each run.', required = False
                                                     ,default = None)
     args = parser.parse_args()
+
+
+    print('Reading data frame from '+ args.data)
+
+
+    if args.labeled:
+        dataset = pd.read_csv(args.data, sep='\t', header=0, index_col=0)
+    else:
+        dataset = pd.read_csv(args.data, sep='\t', header=None)
+
+
+
     if args.parameters_file == None:
         if args.objective.lower() == 'poisson':
             Beta = 1
@@ -348,7 +355,7 @@ def main():
         n_lambda = []
 
         # create new results object containing H W and V
-        results = ARD_NMF(args.data,args.labeled,args.phi,args.a,args.b,K0,args.prior_on_W,args.prior_on_H)
+        results = ARD_NMF(dataset,args.labeled,args.phi,args.a,args.b,K0,args.prior_on_W,args.prior_on_H)
         #
         results.initalize_data()
 
