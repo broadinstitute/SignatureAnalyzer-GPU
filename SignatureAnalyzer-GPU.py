@@ -42,7 +42,8 @@ class ARD_NMF:
         else:
             self.K0 = K0
             self.number_of_active_components = self.K0
-        self.phi = tf.constant(np.multiply(np.var(self.V), phi),dtype=tf.float32)
+        #self.phi = tf.constant(np.multiply(np.var(self.V), phi),dtype=tf.float32)
+        self.phi = phi
         self.a = a
         self.prior_W = prior_W
         self.prior_H = prior_H
