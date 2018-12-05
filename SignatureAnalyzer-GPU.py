@@ -28,7 +28,7 @@ class ARD_NMF:
     NMF results class implements both half normal and exponential prior ARD NMF
     implementation based on https://arxiv.org/pdf/1111.6085.pdf
     """
-    def __init__(self,dataset,has_labels,phi,a,b,K0 = None,prior_W = 'L1',prior_H = 'L2'):
+    def __init__(self,dataset,objective,phi,a,b,K0 = None,prior_W = 'L1',prior_H = 'L2'):
         self.eps_ = tf.constant(1.e-10,dtype=tf.float32)
         self.dataset = dataset
         self.V0 = self.dataset.values[np.sum(self.dataset, axis=1) > 0, :]
@@ -42,8 +42,14 @@ class ARD_NMF:
         else:
             self.K0 = K0
             self.number_of_active_components = self.K0
-        #self.phi = tf.constant(np.multiply(np.var(self.V), phi),dtype=tf.float32)
-        self.phi = phi
+        if objective.lower() == 'poisson':
+
+            self.phi = tf.constant(phi,dtype=tf.float32)
+
+        else:
+
+            self.phi = tf.constant(np.multiply(np.var(self.V), phi), dtype=tf.float32)
+
         self.a = a
         self.prior_W = prior_W
         self.prior_H = prior_H
@@ -120,7 +126,7 @@ def apply_array_updates(sess,updates,gen_array,prime_array):
     for i in range(len(updates)):
         sess.run(gen_array[i], feed_dict={prime_array[i]: updates[i]})
 
-def run_NMF_parameter_search(parameters,data,labeled,max_iter=10000,report_freq=100,tol_=1e-5,active_thresh=1e-5,output_directory='.'):
+def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_freq=100,tol_=1e-5,active_thresh=1e-5,output_directory='.'):
     # parameters in terms of pandas data frame with columns (a,phi,b,prior_on_W,prior_on_H,Beta,label)
     # will return a dictionary of {label : NMF_results_object}
     GPUs = get_available_gpus()
@@ -149,7 +155,7 @@ def run_NMF_parameter_search(parameters,data,labeled,max_iter=10000,report_freq=
             r = parameters.iloc[job_counter]
             job_counter+=1
             print('Running job '+r['label'])
-            job_dict[r['label']] = ARD_NMF(data, labeled,
+            job_dict[r['label']] = ARD_NMF(data, objective,
                                            r['phi'], r['a'], r['b'], r['K0'], r['prior_on_W'], r['prior_on_H'])
             job_dict[r['label']].initalize_data()
             labels.append(r['label'])
@@ -357,7 +363,7 @@ def main():
         n_lambda = []
 
         # create new results object containing H W and V
-        results = ARD_NMF(dataset,args.labeled,args.phi,args.a,args.b,K0,args.prior_on_W,args.prior_on_H)
+        results = ARD_NMF(dataset,args.objective,args.phi,args.a,args.b,K0,args.prior_on_W,args.prior_on_H)
         #
         results.initalize_data()
 
@@ -428,7 +434,7 @@ def main():
         print('running in job array mode')
         parameters = pd.read_csv(args.parameters_file,sep='\t')
         createFolder(args.output_file)
-        run_NMF_parameter_search(parameters, dataset, args.labeled, max_iter=args.max_iter, report_freq=args.report_frequency, tol_=args.tolerance,
+        run_NMF_parameter_search(parameters, dataset, args.objective, max_iter=args.max_iter, report_freq=args.report_frequency, tol_=args.tolerance,
                                  active_thresh=1e-5,output_directory=args.output_file)
 
 
