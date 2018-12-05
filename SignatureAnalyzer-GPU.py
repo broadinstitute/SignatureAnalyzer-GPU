@@ -427,7 +427,7 @@ def main():
         print('running in job array mode')
         parameters = pd.read_csv(args.parameters_file,sep='\t')
         createFolder(args.output_file)
-        run_NMF_parameter_search(parameters, args.data, args.labeled, max_iter=args.max_iter, report_freq=args.report_frequency, tol_=args.tolerance,
+        run_NMF_parameter_search(parameters, dataset, args.labeled, max_iter=args.max_iter, report_freq=args.report_frequency, tol_=args.tolerance,
                                  active_thresh=1e-5,output_directory=args.output_file)
 
 
