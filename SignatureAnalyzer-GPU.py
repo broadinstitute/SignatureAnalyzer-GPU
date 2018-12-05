@@ -31,7 +31,6 @@ class ARD_NMF:
     def __init__(self,dataset,has_labels,phi,a,b,K0 = None,prior_W = 'L1',prior_H = 'L2'):
         self.eps_ = tf.constant(1.e-10,dtype=tf.float32)
         self.dataset = dataset
-        print('Data loaded. Constructing class for NMF')
         self.V0 = self.dataset.values[np.sum(self.dataset, axis=1) > 0, :]
         self.V = np.array(self.V0 - np.min(self.V0) + 1.e-30, dtype=np.float32)
         self.V_max = np.max(self.V)
@@ -147,9 +146,11 @@ def run_NMF_parameter_search(parameters,data,labeled,max_iter=10000,report_freq=
         lam_previous_array = list()
         for G in GPUs:
             r = parameters.iloc[job_counter]
+            job_counter+=1
+            print('Running job '+r['label'])
             job_dict[r['label']] = ARD_NMF(data, labeled,
                                            r['phi'], r['a'], r['b'], r['K0'], r['prior_on_W'], r['prior_on_H'])
-            job_dict[parameters['label'][i]].initalize_data()
+            job_dict[r['label']].initalize_data()
             labels.append(r['label'])
             if parameter_index <= len(parameters):
              with tf.device(G):
