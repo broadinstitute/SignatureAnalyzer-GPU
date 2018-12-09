@@ -137,6 +137,7 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
     objectives = list()
     n_active = list()
     job_counter = 0
+
     for batch in range(0,parameter_batches):
         labels = []
         h_array = list()
@@ -158,6 +159,14 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
             r = parameters.iloc[job_counter]
             job_counter+=1
             print('Running job '+r['label'])
+            if objective == None:
+                if r['Beta'] == 1:
+                    objective = 'poisson'
+                elif r['Beta'] == 2:
+                    objective = 'gaussian'
+                else:
+                    print('ERROR: One of Beta and/or objective are required to be defined.')
+                    sys.exit()
             job_dict[r['label']] = ARD_NMF(data, objective,
                                            r['phi'], r['a'], r['b'], r['K0'], r['prior_on_W'], r['prior_on_H'])
             job_dict[r['label']].initalize_data()
@@ -259,7 +268,7 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
                     lam_previous_array[i] = lambda_new[i]
 
 
-        for i in range(len(h_new)):
+        for i in range(len(parameters)):
             result_index = parameter_index - n_GPUs  + i
             nonzero_idx = (np.sum(h_new[i], axis=1) * np.sum(w_new[i], axis=0)) > active_thresh
             W_active = w_new[i][:, nonzero_idx]
@@ -320,7 +329,7 @@ def main():
     parser.add_argument('--b', help='Hyperparamter for lambda. Default used is as recommended in Tan and Fevotte 2012',
                         required = False,type=float, default = None)
     parser.add_argument('--objective',help='Defines the data objective. Choose between "poisson" or "gaussian". Defaults to Poisson',
-                        required=False,default='Poisson',type=str)
+                        required=False,default=None,type=str)
 
     parser.add_argument('--prior_on_W',help = 'Prior on W matrix "L1" (exponential) or "L2" (half-normal)'
                         ,required = False, default = 'L1',type=str)
