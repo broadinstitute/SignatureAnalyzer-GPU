@@ -273,8 +273,9 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
             print(h_new)
             print(len(h_new))
             print('Printing result index:')
-            print(result_index)
+
             result_index = parameter_index - n_GPUs  + i
+            print(result_index)
             nonzero_idx = (np.sum(h_new[i], axis=1) * np.sum(w_new[i], axis=0)) > active_thresh
             W_active = w_new[i][:, nonzero_idx]
             H_active = h_new[i][nonzero_idx, :]
