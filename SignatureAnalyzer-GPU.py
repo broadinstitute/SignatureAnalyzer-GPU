@@ -269,6 +269,11 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
 
 
         for i in range(len(h_new)):
+            print('Printing h-new,len(h_new):')
+            print(h_new)
+            print(len(h_new))
+            print('Printing result index:')
+            print(result_index)
             result_index = parameter_index - n_GPUs  + i
             nonzero_idx = (np.sum(h_new[i], axis=1) * np.sum(w_new[i], axis=0)) > active_thresh
             W_active = w_new[i][:, nonzero_idx]
@@ -281,7 +286,7 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
             H_final = W_weight[:, np.newaxis] * H_active
 
             sig_names = ['W' + str(j) for j in range(1, nsig + 1)]
-
+            print(job_dict)
             W_df = pd.DataFrame(data=W_final, index=job_dict[parameters['label'][result_index]].channel_names, columns=sig_names)
             H_df = pd.DataFrame(data=H_final, index=sig_names, columns=job_dict[parameters['label'][result_index]].sample_names);
 
