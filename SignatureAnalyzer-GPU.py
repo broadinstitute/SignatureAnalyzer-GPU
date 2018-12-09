@@ -137,6 +137,7 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
     objectives = list()
     n_active = list()
     job_counter = 0
+    result_index = 0
     for batch in range(0,parameter_batches):
         labels = []
         h_array = list()
@@ -152,9 +153,20 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
         updates_prime_Lambda = list()
         lam_previous_array = list()
         for G in GPUs:
+            if job_counter >= len(parameters):
+                ## handling last batch size < n_gpus
+                break
             r = parameters.iloc[job_counter]
             job_counter+=1
             print('Running job '+r['label'])
+            if objective == None:
+                if r['Beta'] == 1:
+                    objective = 'poisson'
+                elif r['Beta'] == 2:
+                    objective = 'gaussian'
+                else:
+                    print('ERROR: One of Beta and/or objective are required to be defined.')
+                    sys.exit()
             job_dict[r['label']] = ARD_NMF(data, objective,
                                            r['phi'], r['a'], r['b'], r['K0'], r['prior_on_W'], r['prior_on_H'])
             job_dict[r['label']].initalize_data()
@@ -257,7 +269,6 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
 
 
         for i in range(len(h_new)):
-            result_index = parameter_index - n_GPUs  + i
             nonzero_idx = (np.sum(h_new[i], axis=1) * np.sum(w_new[i], axis=0)) > active_thresh
             W_active = w_new[i][:, nonzero_idx]
             H_active = h_new[i][nonzero_idx, :]
@@ -269,7 +280,6 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
             H_final = W_weight[:, np.newaxis] * H_active
 
             sig_names = ['W' + str(j) for j in range(1, nsig + 1)]
-
             W_df = pd.DataFrame(data=W_final, index=job_dict[parameters['label'][result_index]].channel_names, columns=sig_names)
             H_df = pd.DataFrame(data=H_final, index=sig_names, columns=job_dict[parameters['label'][result_index]].sample_names);
 
@@ -289,6 +299,7 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
 
             with open(output_directory + '/'+parameters['label'][result_index]+  '_results.pkl', 'wb') as f:
                 pickle.dump([W_active,H_active,Lambda_k], f)
+            result_index += 1
         for label in labels:
             job_dict[label] = []
 
@@ -317,7 +328,7 @@ def main():
     parser.add_argument('--b', help='Hyperparamter for lambda. Default used is as recommended in Tan and Fevotte 2012',
                         required = False,type=float, default = None)
     parser.add_argument('--objective',help='Defines the data objective. Choose between "poisson" or "gaussian". Defaults to Poisson',
-                        required=False,default='Poisson',type=str)
+                        required=False,default=None,type=str)
 
     parser.add_argument('--prior_on_W',help = 'Prior on W matrix "L1" (exponential) or "L2" (half-normal)'
                         ,required = False, default = 'L1',type=str)
