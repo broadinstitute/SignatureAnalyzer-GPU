@@ -137,7 +137,7 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
     objectives = list()
     n_active = list()
     job_counter = 0
-
+    result_index = 0
     for batch in range(0,parameter_batches):
         labels = []
         h_array = list()
@@ -274,7 +274,7 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
             print(len(h_new))
             print('Printing result index:')
 
-            result_index = parameter_index - n_GPUs  + i
+
             print(result_index)
             nonzero_idx = (np.sum(h_new[i], axis=1) * np.sum(w_new[i], axis=0)) > active_thresh
             W_active = w_new[i][:, nonzero_idx]
@@ -307,6 +307,7 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
 
             with open(output_directory + '/'+parameters['label'][result_index]+  '_results.pkl', 'wb') as f:
                 pickle.dump([W_active,H_active,Lambda_k], f)
+            result_index += 1
         for label in labels:
             job_dict[label] = []
 
