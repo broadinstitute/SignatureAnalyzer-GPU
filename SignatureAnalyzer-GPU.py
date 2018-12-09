@@ -152,6 +152,9 @@ def run_NMF_parameter_search(parameters,data,objective,max_iter=10000,report_fre
         updates_prime_Lambda = list()
         lam_previous_array = list()
         for G in GPUs:
+            if job_counter >= len(parameters):
+                ## handling last batch size < n_gpus
+                break
             r = parameters.iloc[job_counter]
             job_counter+=1
             print('Running job '+r['label'])
