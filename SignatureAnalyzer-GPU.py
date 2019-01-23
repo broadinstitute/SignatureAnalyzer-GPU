@@ -328,7 +328,7 @@ def main():
     parser.add_argument('--b', help='Hyperparamter for lambda. Default used is as recommended in Tan and Fevotte 2012',
                         required = False,type=float, default = None)
     parser.add_argument('--objective',help='Defines the data objective. Choose between "poisson" or "gaussian". Defaults to Poisson',
-                        required=False,default=None,type=str)
+                        required=False,default='poisson',type=str)
 
     parser.add_argument('--prior_on_W',help = 'Prior on W matrix "L1" (exponential) or "L2" (half-normal)'
                         ,required = False, default = 'L1',type=str)
