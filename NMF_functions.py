@@ -1,8 +1,11 @@
 import torch
+import torch.nn as nn
+SEloss = nn.MSELoss(reduction = 'sum')
 
-class NMF_algorithim:
+class NMF_algorithim(nn.Module):
     ''' implements ARD NMF from https://arxiv.org/pdf/1111.6085.pdf '''
     def __init__(self,Beta,H_prior,W_prior):
+        super(NMF_algorithim, self).__init__()
         # Beta paramaterizes the objective function
         # Beta = 1 induces a poisson objective
         # Beta = 2 induces a gaussian objective
@@ -48,7 +51,7 @@ class NMF_algorithim:
             self.update_H = update_H_gaussian_L2
             self.lambda_update = update_lambda_L2
 
-    def algorithm(self,W, H, V, lambda_, C, b0, eps_, phi):
+    def forward(self,W, H, V, lambda_, C, b0, eps_, phi):
         h_ = self.update_H(H, W, lambda_, phi, V, eps_)
         w_ = self.update_W(h_, W, lambda_, phi, V, eps_)
         lam_ = self.lambda_update(w_,h_,b0,C,eps_)
@@ -57,13 +60,9 @@ class NMF_algorithim:
 
 
 def beta_div(Beta,V,W,H,eps_):
-    V_ap = torch.matmul(W, H) + eps_
+    V_ap = torch.matmul(W, H).type(V.dtype) + eps_.type(V.dtype)
     if Beta == 2:
-        div_sum = torch.tensor(0,dtype=torch.float32)
-        for i in range(V.shape[1]):
-            div_sum += torch.sum(torch.pow(V[:,i]-V_ap[:,i],2))
-        return div_sum / 2
-        #return torch.sum(torch.pow(V-V_ap,2))/2;
+        return SEloss(V,V_ap)/2
     if Beta == 1:
         lr = torch.log(torch.div(V, V_ap))
         return torch.sum( ( (V*lr) + V_ap) - V)
@@ -85,8 +84,7 @@ def update_H_poisson_L2(H,W,lambda_,phi,V, eps_):
     #beta = 1 zeta(beta) = 1/2
     denom = torch.sum(W,0).reshape(-1,1) + torch.div(phi*H, lambda_.reshape(-1,1)) + eps_
     V_ap = torch.matmul(W, H) + eps_
-    V_res = torch.div(V, V_ap)
-    update = torch.pow(torch.div(torch.matmul(W.transpose(0,1), V_res), denom),0.5)
+    update = torch.pow(torch.div(torch.matmul(W.transpose(0,1), torch.div(V, V_ap)), denom),0.5)
     return H * update
 
 def update_H_gaussian_L1(H,W,lambda_,phi,V,eps_):
@@ -98,10 +96,9 @@ def update_H_gaussian_L1(H,W,lambda_,phi,V,eps_):
 
 def update_H_gaussian_L2(H,W,lambda_,phi,V,eps_):
     #beta = 2 zeta(beta) = 1
-    V_ap = torch.matmul(W, H) + eps_
-    denom = torch.matmul(W.transpose(0,1),V_ap) + torch.div(phi * H, lambda_.reshape(-1,1)) + eps_
-    update = torch.div(torch.matmul(W.transpose(0,1),V),denom)
-    return H * update
+    denom = torch.matmul(W.transpose(0,1).type(V.dtype),torch.matmul(W, H).type(V.dtype) + eps_) + torch.div(phi * H, lambda_.reshape(-1,1)).type(V.dtype) + eps_
+    update = torch.div(torch.matmul(W.transpose(0,1).type(V.dtype),V),denom)
+    return H * update.type(torch.float32)
 
 def update_W_poisson_L1(H, W, lambda_, phi, V, eps_):
     #beta = 1 gamma(beta) = 1
@@ -121,10 +118,10 @@ def update_W_poisson_L2(H,W,lambda_,phi,V,eps_):
 
 def update_W_gaussian_L1(H,W,lambda_,phi,V,eps_):
     #beta = 2 gamma(beta) = 1
-    V_ap = torch.matmul(W,H) + eps_
-    denom = torch.matmul(V_ap,H.transpose(0,1)) + torch.div(phi,lambda_) + eps_
-    update = torch.div(torch.matmul(V,H.transpose(0,1)),denom)
-    return W * update
+    V_ap = torch.matmul(W,H).type(V.dtype) + eps_
+    denom = torch.matmul(V_ap,H.transpose(0,1).type(V.dtype)) + torch.div(phi,lambda_).type(V.dtype) + eps_
+    update = torch.div(torch.matmul(V,H.transpose(0,1).type(V.dtype)),denom)
+    return W * update.type(torch.float32)
 
 def update_W_gaussian_L2(H,W,lambda_,phi,V,eps_):
     #beta = 2 zeta(beta) = 1

@@ -1,21 +1,22 @@
-a	phi	b	prior_on_W	prior_on_H	Beta	K0	label
-10	1	None	L1	L1	1	96	run_1
-10	1	None	L1	L1	1	96	run_2
-10	1	None	L1	L1	1	96	run_3
-10	1	None	L1	L1	1	96	run_4
-10	1	None	L1	L1	1	96	run_5
-10	1	None	L1	L1	1	96	run_6
-10	1	None	L1	L1	1	96	run_7
-10	1	None	L1	L1	1	96	run_8
-10	1	None	L1	L1	1	96	run_9
-10	1	None	L1	L1	1	96	run_10
-10	1	None	L1	L1	1	96	run_11
-10	1	None	L1	L1	1	96	run_12
-10	1	None	L1	L1	1	96	run_13
-10	1	None	L1	L1	1	96	run_14
-10	1	None	L1	L1	1	96	run_15
-10	1	None	L1	L1	1	96	run_16
-10	1	None	L1	L1	1	96	run_17
-10	1	None	L1	L1	1	96	run_18
-10	1	None	L1	L1	1	96	run_19
-10	1	None	L1	L1	1	96	run_20
+a	phi	b	K0	label
+10	1	None	96	run_1
+10	1	None	96	run_2
+10	1	None	96	run_3
+10	1	None	96	run_4
+10	1	None	96	run_5
+10	1	None	96	run_6
+10	1	None	96	run_7
+10	1	None	96	run_8
+10	1	None	96	run_9
+10	1	None	96	run_10
+10	1	None	96	run_11
+10	1	None	96	run_12
+10	1	None	96	run_13
+10	1	None	96	run_14
+10	1	None	96	run_15
+10	1	None	96	run_16
+10	1	None	96	run_17
+10	1	None	96	run_18
+10	1	None	96	run_19
+10	1	None	96	run_20
+10	1	None	96	run_21
