@@ -33,7 +33,7 @@ Note that as part of this work we derived the form for a mixed prior (e.g. L1 on
 
 Example command line for a single run of SignatureAnalyzer-GPU:
 ```
-$ python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --max_iter=100000 --output_file POLEMSI_EXAMPLE --prior_on_W L1 --prior_on_H L2 --labeled
+python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --max_iter=100000 --output_dir POLEMSI_EXAMPLE --prior_on_W L1 --prior_on_H L2 --labeled
 ```
 Data should be formatted so that the rows are the categories and the columns are the samples. For a full description of inputs and outputs please see the repository wiki. 
 
@@ -43,6 +43,6 @@ The short run time of SignatureAnalyzer-GPU enables performing a parameter searc
 
 NOTE this is automatically configured to run on a single or multiple GPUs just run as usual to perform parallel runs. 
 ```
-python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --output_file example_data/POLEMSI_outputs/ --parameters_file example_data/POLEMSI_params.txt --max_iter 20000 --labeled --tolerance 1e-7
+python SignatureAnalyzer-GPU.py --data example_data/POLEMSI_counts_matrix.txt --prior_on_W L1 --prior_on_H L2 --output_dir example_data/POLEMSI_outputs/ --parameters_file example_data/POLEMSI_params.txt --max_iter 20000 --labeled --tolerance 1e-7 
 ```
 For a full description of inputs and outputs related to parameters_file runs see the repository wiki. 
