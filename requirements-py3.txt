@@ -4,5 +4,4 @@ pyarrow==0.11.1
 scikit-image==0.13.1
 scikit-learn==0.19.1
 scipy==1.1.0
-torch==1.0.0a0+3c7b575
 
