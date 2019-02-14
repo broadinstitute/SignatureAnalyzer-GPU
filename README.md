@@ -4,6 +4,10 @@
 ```
 git clone https://github.com/broadinstitute/SignatureAnalyzer-GPU.git
 ```
+To install pytorch please use Anaconda (find more details @ https://pytorch.org/):
+```
+conda install pytorch torchvision cudatoolkit=9.0 -c pytorch
+```
 
 # Setup
 For easy set up you can create a python virtual enviroment which matches our own: 
