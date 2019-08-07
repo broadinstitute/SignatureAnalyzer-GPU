@@ -139,7 +139,7 @@ def run_method_engine(results, a, phi, b, Beta, W_prior, H_prior, K0, tolerance,
     # set method
     method = NMF_algorithim(Beta,H_prior,W_prior)
 
-    
+    start_time = time.time()
     while deltrack >= tolerance and iter < max_iter:
         # compute updates
         H,W,Lambda = method.forward(W,H,V,Lambda,C,b0,eps_,phi)
@@ -154,12 +154,13 @@ def run_method_engine(results, a, phi, b, Beta, W_prior, H_prior, K0, tolerance,
         if iter % report_freq == 0:
             print("nit=%s\tobjective=%s\tbeta_div=%s\tlambda=%s\tdel=%s\tK=%s\tsumW=%s\tsumH=%s" % (iter,cost_.cpu().numpy(),l_.cpu().numpy(),torch.sum(Lambda).cpu().numpy()
                                                                                                 ,deltrack.cpu().numpy(),
-                                                                                                torch.sum((torch.sum(H,1) + torch.sum(W,0))>active_thresh).cpu().numpy()
+                                                                                               torch.sum((torch.sum(H,1) + torch.sum(W,0))>active_thresh).cpu().numpy()
                                                                                                 ,torch.sum(W).cpu().numpy(),torch.sum(H).cpu().numpy()))
     
         iter+=1
+    end_time = time.time()
     if send_end != None:    
-        send_end.send([W.cpu().numpy(),H.cpu().numpy(),cost_.cpu().numpy()])
+        send_end.send([W.cpu().numpy(),H.cpu().numpy(),cost_.cpu().numpy(),end_time-start_time])
     else:
-        return W.cpu().numpy(),H.cpu().numpy(),cost_.cpu().numpy()
+        return W.cpu().numpy(),H.cpu().numpy(),cost_.cpu().numpy(),end_time-start_time
         
