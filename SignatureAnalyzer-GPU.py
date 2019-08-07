@@ -30,6 +30,7 @@ def run_parameter_sweep(parameters,data,args,Beta):
     idx = 0
     objectives = []
     nsigs = []
+    times = []
     while idx <= len(parameters)-num_processes:
         print(idx)
         pipe_list = []
@@ -48,25 +49,27 @@ def run_parameter_sweep(parameters,data,args,Beta):
         nsig = [write_output(x[0],x[1],data.channel_names,data.sample_names,args.output_dir,
                       parameters['label'][idx+i]) for i,x in enumerate(result_list)]
         [nsigs.append(ns) for i,ns in enumerate(nsig)]
+        [times.append(time[3]) for i,time in enumerate(result_list)]
         [objectives.append(obj[2]) for i,obj in enumerate(result_list)]
         idx += num_processes
         
     if idx < len(parameters):
         for i in range(len(parameters)-idx):
             idx+=i
-            W,H,cost = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta, 
+            W,H,cost,time = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta, 
                                                    args.prior_on_W, args.prior_on_H, parameters.iloc[idx]['K0'], args.tolerance,args.max_iter)
             nsig = write_output(W,H,data.channel_names,data.sample_names,args.output_dir,
                       parameters['label'][idx])
-            
-            nsigs.append(nsigs)
+            times.append(time)
+            nsigs.append(nsig)
             objectives.append(cost)
     parameters['nsigs'] = nsigs
     parameters['objective'] = objectives
+    parameters['times'] = times
     parameters.to_csv(args.output_dir + '/parameters_with_results.txt',sep='\t',index=None)
 
 
-def write_output(W, H, channel_names, sample_names, output_directory, label, active_thresh = 1e-5):
+def write_output(W, H, channel_names, sample_names, output_directory, label,  active_thresh = 1e-5):
             createFolder(output_directory)
             nonzero_idx = (np.sum(H, axis=1) * np.sum(W, axis=0)) > active_thresh
             W_active = W[:, nonzero_idx]
