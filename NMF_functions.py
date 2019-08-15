@@ -60,12 +60,14 @@ class NMF_algorithim(nn.Module):
 
 
 def beta_div(Beta,V,W,H,eps_):
+    
     V_ap = torch.matmul(W, H).type(V.dtype) + eps_.type(V.dtype)
     if Beta == 2:
         return SEloss(V,V_ap)/2
     if Beta == 1:
+        
         lr = torch.log(torch.div(V, V_ap))
-        return torch.sum( ( (V*lr) + V_ap) - V)
+        return torch.sum((V*lr) - V + V_ap)
 
 def calculate_objective_function(Beta,V,W,H,lambda_,C, eps_,phi,K):
     loss = beta_div(Beta,V,W,H,eps_)
