@@ -167,7 +167,7 @@ def main():
         parameters = pd.read_csv(args.parameters_file,sep='\t')
         run_parameter_sweep(parameters,data,args,Beta)
     else:
-        W,H,cost = run_method_engine(data, args.a, args.phi, args.b, Beta, 
+        W,H,cost,time = run_method_engine(data, args.a, args.phi, args.b, Beta, 
                                                    args.prior_on_W, args.prior_on_H, args.K0, args.tolerance,args.max_iter)
         nsig = write_output(W,H,data.channel_names,data.sample_names,args.output_dir,args.output_dir
                       )
