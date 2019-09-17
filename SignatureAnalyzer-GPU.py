@@ -14,7 +14,6 @@ from ARD_NMF import run_method_engine
 import torch.nn as nn
 import torch.multiprocessing as mp
 
-
 def createFolder(directory):
     try:
         if not os.path.exists(directory):
@@ -22,8 +21,7 @@ def createFolder(directory):
     except OSError:
         print ('Error: Creating directory. ' +  directory)
 
-
-def run_parameter_sweep(parameters,data,args,Beta):
+def run_parameter_sweep(parameters, data, args, Beta):
     output = []
     num_processes = torch.cuda.device_count()
     batches = int(len(parameters) / num_processes)
@@ -59,16 +57,24 @@ def run_parameter_sweep(parameters,data,args,Beta):
         result_list = [x.recv() for x in pipe_list]
         for p in processes:
             p.join()
-        nsig = [write_output(x[0],x[1],data.channel_names,data.sample_names,args.output_dir,
-                      parameters['label'][idx+i]) for i,x in enumerate(result_list)]
+
+        nsig = [write_output(
+            x[0],
+            x[1],
+            data.channel_names,
+            data.sample_names,
+            args.output_dir,
+            parameters['label'][idx+i]
+            ) for i,x in enumerate(result_list)]
+
         [nsigs.append(ns) for i,ns in enumerate(nsig)]
-        [objectives.append(obj[2]) for i,obj in enumerate(result_list)]
+        [objectives.append(x[2]) for i,x in enumerate(result_list)]
         idx += num_processes
 
     if idx < len(parameters):
         for i in range(len(parameters)-idx):
             idx+=i
-            W,H,cost = run_method_engine(
+            x = run_method_engine(
                 data,
                 parameters.iloc[idx]['a'],
                 parameters.iloc[idx]['phi'],
@@ -83,38 +89,43 @@ def run_parameter_sweep(parameters,data,args,Beta):
                 1e-5,
                 send_end,
                 rank
-                )
-            nsig = write_output(W,H,data.channel_names,data.sample_names,args.output_dir,
-                      parameters['label'][idx])
+            )
 
-            nsigs.append(nsigs)
-            objectives.append(cost)
+            nsig = write_output(
+                x[0],
+                x[1],
+                data.channel_names,
+                data.sample_names,
+                args.output_dir,
+                parameters['label'][idx])
+
+            nsigs.append(nsig)
+            objectives.append(x[2])
+
     parameters['nsigs'] = nsigs
     parameters['objective'] = objectives
     parameters.to_csv(args.output_dir + '/parameters_with_results.txt',sep='\t',index=None)
 
-
 def write_output(W, H, channel_names, sample_names, output_directory, label, active_thresh = 1e-5):
-            createFolder(output_directory)
-            nonzero_idx = (np.sum(H, axis=1) * np.sum(W, axis=0)) > active_thresh
-            W_active = W[:, nonzero_idx]
-            H_active = H[nonzero_idx, :]
-            nsig = np.sum(nonzero_idx)
-            # Normalize W and transfer weight to H matrix
-            W_weight = np.sum(W_active, axis=0)
-            W_final = W_active / W_weight
-            H_final = W_weight[:, np.newaxis] * H_active
+    createFolder(output_directory)
+    nonzero_idx = (np.sum(H, axis=1) * np.sum(W, axis=0)) > active_thresh
+    W_active = W[:, nonzero_idx]
+    H_active = H[nonzero_idx, :]
+    nsig = np.sum(nonzero_idx)
+    # Normalize W and transfer weight to H matrix
+    W_weight = np.sum(W_active, axis=0)
+    W_final = W_active / W_weight
+    H_final = W_weight[:, np.newaxis] * H_active
 
-            sig_names = ['W' + str(j) for j in range(1, nsig + 1)]
-            W_df = pd.DataFrame(data=W_final, index=channel_names, columns=sig_names)
-            H_df = pd.DataFrame(data=H_final, index=sig_names, columns=sample_names);
+    sig_names = ['W' + str(j) for j in range(1, nsig + 1)]
+    W_df = pd.DataFrame(data=W_final, index=channel_names, columns=sig_names)
+    H_df = pd.DataFrame(data=H_final, index=sig_names, columns=sample_names);
 
-            # Write W and H matrices
-            W_df.to_csv(output_directory + '/'+label+ '_W.txt', sep='\t')
-            H_df.to_csv(output_directory + '/'+label+ '_H.txt', sep='\t')
+    # Write W and H matrices
+    W_df.to_csv(output_directory + '/'+label+ '_W.txt', sep='\t')
+    H_df.to_csv(output_directory + '/'+label+ '_H.txt', sep='\t')
 
-
-            return nsig
+    return nsig
 
 def main():
     ''' Run ARD NMF'''
@@ -157,7 +168,7 @@ def main():
                                                   'GPU system. To run in this mode provide this argument with a text file with '
                                                   'the following headers:(a,phi,b,prior_on_W,prior_on_H,Beta,label) label '
                                                   'indicates the output stem of the results from each run.', required = False
-                                                    ,default = None)
+                                                  ,default = None)
     args = parser.parse_args()
 
 
@@ -188,25 +199,26 @@ def main():
         print('objective parameter should be one of "gaussian" or "poisson"')
         sys.exit()
 
-    data = ARD_NMF(dataset,args.objective)
+    data = ARD_NMF(dataset, args.objective)
+
     if args.parameters_file != None:
-        parameters = pd.read_csv(args.parameters_file,sep='\t')
-        run_parameter_sweep(parameters,data,args,Beta)
+        parameters = pd.read_csv(args.parameters_file, sep='\t')
+        run_parameter_sweep(parameters, data, args, Beta)
     else:
-        W,H,cost = run_method_engine(
-            data, \
-            args.a, \
-            args.phi, \
-            args.b, \
-            Beta, \
-            args.prior_on_W, \
-            args.prior_on_H, \
-            args.K0, \
-            args.tolerance, \
-            args.max_iter, \
+        x = run_method_engine(
+            data,
+            args.a,
+            args.phi,
+            args.b,
+            Beta,
+            args.prior_on_W,
+            args.prior_on_H,
+            args.K0,
+            args.tolerance,
+            args.max_iter,
             args.report_frequency,
         )
-        nsig = write_output(W,H,data.channel_names,data.sample_names,args.output_dir,args.output_dir)
-if __name__ == "__main__":
+        nsig = write_output(x[0],x[1],data.channel_names,data.sample_names,args.output_dir,args.output_dir)
 
+if __name__ == "__main__":
     main()

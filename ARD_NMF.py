@@ -10,6 +10,7 @@ import pickle
 import math
 import torch
 from typing import Union
+import multiprocessing.connection as mpc
 from NMF_functions import *
 
 class ARD_NMF:
@@ -138,14 +139,40 @@ def run_method_engine(
     K0: int,
     tolerance: float,
     max_iter: int,
-    report_freq: [int,str] = 10,
+    report_freq: int = 10,
     active_thresh: float = 1e-5,
-    send_end: bool = False,
+    send_end: Union[mpc.Connection, None] = None,
     cuda_int: Union[int, None] = 0,
     verbose: bool = True
-    ):
+    ) -> (pd.DataFrame, pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray):
     """
-    Runs NMF Method engine.
+    Run ARD-NMF Engine.
+    ------------------------------------------------------------------------
+    Args:
+        * results: initialized ARD_NMF class
+        * a: shape parameter
+        * phi: dispersion parameter
+        * b: shape parameter
+        * Beta: defined by objective function
+        * W_prior: prior on W matrix ("L1" or "L2")
+        * H_prior: prior on H matrix ("L1" or "L2")
+        * K0: starting number of latent components
+        * tolerance: end-point of optimization
+        * max_iter: maximum number of iterations for algorithm
+        * report_freq: how often to print updates
+        * active_thresh: threshold for a latent component's impact on
+            signature if the latent factor is less than this, it does not contribute
+        * send_end: mpc.Connection resulting from multiprocessing.Pipe,
+            for use in parameter sweep implementation
+        * cuda_int: GPU to use. Defaults to 0. If "None" or if no GPU available,
+            will perform decomposition using CPU.
+        * verbose: verbose logging
+
+    Returns:
+        * H: (samples x K)
+        * W: (K x features)
+        * markers
+        * signatures
     """
     # initalize the NMF run
     results.initalize_data(a, phi, b, W_prior, H_prior, Beta, K0)
@@ -162,6 +189,7 @@ def run_method_engine(
     # tracking variables
     deltrack = 1000
     times = list()
+    report = dict()
     iter = 0
     lam_previous = Lambda
     if verbose: print('%%%%%%%%%%%%%%%')
@@ -175,34 +203,50 @@ def run_method_engine(
     while deltrack >= tolerance and iter < max_iter:
         # compute updates
         H,W,Lambda = method.forward(W,H,V,Lambda,C,b0,eps_,phi)
+
         # compute objective and cost
         l_ = beta_div(Beta,V,W,H,eps_)
         cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0)
+
         # update tracking
         deltrack = torch.max(torch.div(torch.abs(Lambda -lam_previous), (lam_previous+1e-5)))
         lam_previous = Lambda
 
+        # ---------------------------- Reporting ---------------------------- #
         if iter % report_freq == 0:
+            report[iter] = {
+                'K': torch.sum((torch.sum(H,1) + torch.sum(W,0))>active_thresh).cpu().numpy(),
+                'obj': cost_.cpu().numpy(),
+                'b_div': l_.cpu().numpy(),
+                'lam': torch.sum(Lambda).cpu().numpy(),
+                'del': deltrack.cpu().numpy(),
+                'W_sum': torch.sum(W).cpu().numpy(),
+                'H_sum': torch.sum(H).cpu().numpy()
+            }
+
             if verbose:
                 print("nit={:>5} K={:>5} | obj={:.2f}\tb_div={:.2f}\tlam={:.2f}\tdel={:.8f}\tsumW={:.2f}\tsumH={:.2f}".format(
                     iter,
-                    torch.sum((torch.sum(H,1) + torch.sum(W,0))>active_thresh).cpu().numpy(),
-                    cost_.cpu().numpy(),
-                    l_.cpu().numpy(),
-                    torch.sum(Lambda).cpu().numpy(),
-                    deltrack.cpu().numpy(),
-                    torch.sum(W).cpu().numpy(),
-                    torch.sum(H).cpu().numpy()
-                    ))
+                    report[iter]['K'],
+                    report[iter]['obj'],
+                    report[iter]['b_div'],
+                    report[iter]['lam'],
+                    report[iter]['del'],
+                    report[iter]['W_sum'],
+                    report[iter]['H_sum']
+                    )
+                )
             else:
                 stdout.write("\rnit={:>5} K={} \tdel={:.8f}".format(
                     iter,
-                    torch.sum((torch.sum(H,1) + torch.sum(W,0))>active_thresh).cpu().numpy(),
-                    deltrack.cpu().numpy()
-                    ))
-
+                    report[iter]['K'],
+                    report[iter]['del']
+                    )
+                )
+        # ------------------------------------------------------------------- #
         iter+=1
+
     if send_end:
-        send_end.send([W.cpu().numpy(),H.cpu().numpy(),cost_.cpu().numpy()])
+        send_end.send([W.cpu().numpy(), H.cpu().numpy(), cost_.cpu().numpy()])
     else:
-        return W.cpu().numpy(),H.cpu().numpy(),cost_.cpu().numpy()
+        return W.cpu().numpy(), H.cpu().numpy(), cost_.cpu().numpy(), pd.DataFrame.from_dict(report).T, Lambda.cpu().numpy()
