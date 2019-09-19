@@ -143,7 +143,8 @@ def run_method_engine(
     active_thresh: float = 1e-5,
     send_end: Union[mpc.Connection, None] = None,
     cuda_int: Union[int, None] = 0,
-    verbose: bool = True
+    verbose: bool = True,
+    tag: str = ""
     ) -> (pd.DataFrame, pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray):
     """
     Run ARD-NMF Engine.
@@ -180,11 +181,11 @@ def run_method_engine(
     cuda_string = 'cuda:'+str(cuda_int)
     # copy data to GPU
     if torch.cuda.device_count() > 0 and cuda_int is not None:
-        print("   * Using GPU: {}".format(cuda_string))
+        if verbose: print("   * Using GPU: {}".format(cuda_string))
         W,H,V,Lambda,C,b0,eps_,phi = results.W.cuda(cuda_string),results.H.cuda(cuda_string),results.V.cuda(cuda_string),results.Lambda.cuda(cuda_string),results.C.cuda(cuda_string),results.b.cuda(cuda_string),results.eps_.cuda(cuda_string),results.phi.cuda(cuda_string)
     else:
         W,H,V,Lambda,C,b0,eps_,phi = results.W,results.H,results.V,results.Lambda,results.C,results.b,results.eps_,results.phi
-        print("   * Using CPU")
+        if verbose: print("   * Using CPU")
 
     # tracking variables
     deltrack = 1000
@@ -237,7 +238,8 @@ def run_method_engine(
                     )
                 )
             else:
-                stdout.write("\rnit={:>5} K={} \tdel={:.8f}".format(
+                stdout.write("\r{}nit={:>5} K={} \tdel={:.8f}".format(
+                    tag,
                     iter,
                     report[iter]['K'],
                     report[iter]['del']
