@@ -210,7 +210,8 @@ def run_method_engine(
         cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0)
 
         # update tracking
-        deltrack = torch.max(torch.div(torch.abs(Lambda -lam_previous), (lam_previous+1e-5)))
+        deltrack = torch.max(torch.div(torch.abs(Lambda-lam_previous), lam_previous+1e-30))
+
         lam_previous = Lambda
 
         # ---------------------------- Reporting ---------------------------- #
