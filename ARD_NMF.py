@@ -265,6 +265,8 @@ def run_method_engine(
         'H_sum': torch.sum(H).cpu().numpy()
     }
     print_report(iter,report,verbose,tag)
+    if not verbose:
+        stdout.write("\n")
     # ------------------------------------------------------------------- #
 
     if send_end:
