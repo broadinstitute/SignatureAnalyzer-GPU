@@ -128,6 +128,31 @@ class ARD_NMF:
     def get_number_of_active_components(self):
         self.number_of_active_components = torch.sum(torch.sum(self.W,0)> 0.0, dtype=self.dtype)
 
+def print_report(iter,report,verbose,tag):
+    """
+    Prints report.
+    """
+    if verbose:
+        print("nit={:>5} K={:>5} | obj={:.2f}\tb_div={:.2f}\tlam={:.2f}\tdel={:.8f}\tsumW={:.2f}\tsumH={:.2f}".format(
+            iter,
+            report[iter]['K'],
+            report[iter]['obj'],
+            report[iter]['b_div'],
+            report[iter]['lam'],
+            report[iter]['del'],
+            report[iter]['W_sum'],
+            report[iter]['H_sum']
+            )
+        )
+    else:
+        stdout.write("\r{}nit={:>5} K={} \tdel={:.8f}".format(
+            tag,
+            iter,
+            report[iter]['K'],
+            report[iter]['del']
+            )
+        )
+
 def run_method_engine(
     results: ARD_NMF,
     a: float,
@@ -211,7 +236,6 @@ def run_method_engine(
 
         # update tracking
         deltrack = torch.max(torch.div(torch.abs(Lambda-lam_previous), lam_previous+1e-30))
-
         lam_previous = Lambda
 
         # ---------------------------- Reporting ---------------------------- #
@@ -225,31 +249,27 @@ def run_method_engine(
                 'W_sum': torch.sum(W).cpu().numpy(),
                 'H_sum': torch.sum(H).cpu().numpy()
             }
-
-            if verbose:
-                print("nit={:>5} K={:>5} | obj={:.2f}\tb_div={:.2f}\tlam={:.2f}\tdel={:.8f}\tsumW={:.2f}\tsumH={:.2f}".format(
-                    iter,
-                    report[iter]['K'],
-                    report[iter]['obj'],
-                    report[iter]['b_div'],
-                    report[iter]['lam'],
-                    report[iter]['del'],
-                    report[iter]['W_sum'],
-                    report[iter]['H_sum']
-                    )
-                )
-            else:
-                stdout.write("\r{}nit={:>5} K={} \tdel={:.8f}".format(
-                    tag,
-                    iter,
-                    report[iter]['K'],
-                    report[iter]['del']
-                    )
-                )
+            print_report(iter,report,verbose,tag)
         # ------------------------------------------------------------------- #
         iter+=1
+
+
+    # --------------------------- Final Report --------------------------- #
+    report[iter] = {
+        'K': torch.sum((torch.sum(H,1) + torch.sum(W,0))>active_thresh).cpu().numpy(),
+        'obj': cost_.cpu().numpy(),
+        'b_div': l_.cpu().numpy(),
+        'lam': torch.sum(Lambda).cpu().numpy(),
+        'del': deltrack.cpu().numpy(),
+        'W_sum': torch.sum(W).cpu().numpy(),
+        'H_sum': torch.sum(H).cpu().numpy()
+    }
+    print_report(iter,report,verbose,tag)
+    # ------------------------------------------------------------------- #
 
     if send_end:
         send_end.send([W.cpu().numpy(), H.cpu().numpy(), cost_.cpu().numpy()])
     else:
-        return W.cpu().numpy(), H.cpu().numpy(), cost_.cpu().numpy(), pd.DataFrame.from_dict(report).T, Lambda.cpu().numpy()
+        final_report = pd.DataFrame.from_dict(report).T
+        final_report.index.name = 'iter'
+        return W.cpu().numpy(), H.cpu().numpy(), cost_.cpu().numpy(), final_report, Lambda.cpu().numpy()
