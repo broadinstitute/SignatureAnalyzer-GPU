@@ -19,7 +19,7 @@ class ARD_NMF:
     implementation based on https://arxiv.org/pdf/1111.6085.pdf
     """
     def __init__(self,dataset,objective,dtype = torch.float32, verbose=True):
-        self.eps_ = torch.tensor(1.e-7,dtype=dtype,requires_grad=False)
+        self.eps_ = torch.tensor(1.e-30,dtype=dtype,requires_grad=False)
         self.dataset = dataset
         zero_idx = np.sum(self.dataset, axis=1) > 0
         self.V0 = self.dataset.values[zero_idx, :]
@@ -241,7 +241,7 @@ def run_method_engine(
         # ---------------------------- Reporting ---------------------------- #
         if iter % report_freq == 0:
             report[iter] = {
-                'K': torch.sum((torch.sum(H,1) + torch.sum(W,0))>active_thresh).cpu().numpy(),
+                'K': torch.sum((torch.sum(H,1) * torch.sum(W,0))>active_thresh).cpu().numpy(),
                 'obj': cost_.cpu().numpy(),
                 'b_div': l_.cpu().numpy(),
                 'lam': torch.sum(Lambda).cpu().numpy(),
@@ -256,7 +256,7 @@ def run_method_engine(
 
     # --------------------------- Final Report --------------------------- #
     report[iter] = {
-        'K': torch.sum((torch.sum(H,1) + torch.sum(W,0))>active_thresh).cpu().numpy(),
+        'K': torch.sum((torch.sum(H,1) * torch.sum(W,0))>active_thresh).cpu().numpy(),
         'obj': cost_.cpu().numpy(),
         'b_div': l_.cpu().numpy(),
         'lam': torch.sum(Lambda).cpu().numpy(),
@@ -265,6 +265,7 @@ def run_method_engine(
         'H_sum': torch.sum(H).cpu().numpy()
     }
     print_report(iter,report,verbose,tag)
+
     if not verbose:
         stdout.write("\n")
     # ------------------------------------------------------------------- #
