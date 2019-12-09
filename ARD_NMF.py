@@ -11,7 +11,7 @@ import math
 import torch
 from typing import Union
 import multiprocessing.connection as mpc
-from NMF_functions import *
+from .NMF_functions import *
 
 class ARD_NMF:
     """

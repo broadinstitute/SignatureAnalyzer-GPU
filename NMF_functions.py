@@ -148,4 +148,3 @@ def update_lambda_L1_L2(W,H,b0,C,eps_):
 
 def update_lambda_L2_L1(W,H,b0,C,eps_):
     return torch.div(0.5*torch.sum(torch.pow(W,2),0) + torch.sum(H,1)+b0,C)
-
