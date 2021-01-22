@@ -45,6 +45,7 @@ class ARD_NMF:
             self.phi = torch.tensor(np.var(self.V)* phi,dtype=dtype,requires_grad=False)
 
         if use_val_set:
+            torch.manual_seed(0) #get the same mask each time
             self.mask = torch.tensor(torch.rand(self.V.shape) > 0.2, dtype=torch.int8) #create mask, randomly mask ~20% of data in shape V. Only used when passed
         else:
             self.mask = torch.ones(self.V.shape)
