@@ -38,7 +38,7 @@ def run_parameter_sweep(parameters,data,args,Beta):
         for rank in range(num_processes):
             recv_end, send_end = mp.Pipe(False)
             p = mp.Process(target=run_method_engine, args=(data, parameters.iloc[idx+rank]['a'], parameters.iloc[idx+rank]['phi'], parameters.iloc[idx+rank]['b'], Beta,
-                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx+rank]['K0'], args.tolerance, args.max_iter, use_val_set=True, send_end=send_end, cuda_int=rank,))
+                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx+rank]['K0'], args.tolerance, args.max_iter, True, send_end, rank,))
             pipe_list.append(recv_end)
             processes.append(p)
             p.start()
