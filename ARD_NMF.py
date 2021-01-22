@@ -130,7 +130,7 @@ def run_method_engine(results, a, phi, b, Beta, W_prior, H_prior, K0, tolerance,
     # specify GPU
     cuda_string = 'cuda:'+str(cuda_int)
     # copy data to GPU
-    W,H,V,Lambda,C,b0,eps_,phi = results.W.cuda(cuda_string),results.H.cuda(cuda_string),results.V.cuda(cuda_string),results.Lambda.cuda(cuda_string),results.C.cuda(cuda_string),results.b.cuda(cuda_string),results.eps_.cuda(cuda_string),results.phi.cuda(cuda_string)
+    W,H,V,Lambda,C,b0,eps_,phi,mask = results.W.cuda(cuda_string),results.H.cuda(cuda_string),results.V.cuda(cuda_string),results.Lambda.cuda(cuda_string),results.C.cuda(cuda_string),results.b.cuda(cuda_string),results.eps_.cuda(cuda_string),results.phi.cuda(cuda_string),results.mask.cuda(cuda_string)
 
     # tracking variables
     deltrack = 1000
