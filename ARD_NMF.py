@@ -149,10 +149,10 @@ def run_method_engine(results, a, phi, b, Beta, W_prior, H_prior, K0, tolerance,
     start_time = time.time()
     while deltrack >= tolerance and iter < max_iter:
         # compute updates
-        H,W,Lambda = method.forward(W,H,V,Lambda,C,b0,eps_,phi,results.mask)
+        H,W,Lambda = method.forward(W,H,V,Lambda,C,b0,eps_,phi,mask)
         # compute objective and cost
-        l_ = beta_div(Beta,V,W,H,eps_,results.mask) #this will compute loss on training set (excluding validation set, when mask is passed)
-        cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0,results.mask) #this will compute loss on training set (excluding validation set, when mask is passed)
+        l_ = beta_div(Beta,V,W,H,eps_,mask) #this will compute loss on training set (excluding validation set, when mask is passed)
+        cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0,mask) #this will compute loss on training set (excluding validation set, when mask is passed)
         # update tracking
         deltrack = torch.max(torch.div(torch.abs(Lambda -lam_previous), (lam_previous+1e-5)))
         lam_previous = Lambda
