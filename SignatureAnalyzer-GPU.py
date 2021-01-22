@@ -7,7 +7,7 @@ from scipy.special import gamma
 import os
 import pickle
 import torch
-import NMF_functions 
+import NMF_functions
 from ARD_NMF import ARD_NMF
 import feather
 from ARD_NMF import run_method_engine
@@ -37,8 +37,8 @@ def run_parameter_sweep(parameters,data,args,Beta):
         processes = []
         for rank in range(num_processes):
             recv_end, send_end = mp.Pipe(False)
-            p = mp.Process(target=run_method_engine, args=(data, parameters.iloc[idx+rank]['a'], parameters.iloc[idx+rank]['phi'], parameters.iloc[idx+rank]['b'], Beta, 
-                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx+rank]['K0'], args.tolerance,args.max_iter, send_end, rank,))
+            p = mp.Process(target=run_method_engine, args=(data, parameters.iloc[idx+rank]['a'], parameters.iloc[idx+rank]['phi'], parameters.iloc[idx+rank]['b'], Beta,
+                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx+rank]['K0'], args.tolerance, args.max_iter, use_val_set=True, send_end=send_end, cuda_int=rank,))
             pipe_list.append(recv_end)
             processes.append(p)
             p.start()
@@ -52,12 +52,12 @@ def run_parameter_sweep(parameters,data,args,Beta):
         [times.append(time[3]) for i,time in enumerate(result_list)]
         [objectives.append(obj[2]) for i,obj in enumerate(result_list)]
         idx += num_processes
-        
+
     if idx < len(parameters):
         for i in range(len(parameters)-idx):
             idx+=i
-            W,H,cost,time = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta, 
-                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx]['K0'], args.tolerance,args.max_iter)
+            W,H,cost,time = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta,
+                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx]['K0'], args.tolerance, args.max_iter, use_val_set=True)
             nsig = write_output(W,H,data.channel_names,data.sample_names,args.output_dir,
                       parameters['label'][idx])
             times.append(time)
@@ -87,10 +87,10 @@ def write_output(W, H, channel_names, sample_names, output_directory, label,  ac
             # Write W and H matrices
             W_df.to_csv(output_directory + '/'+label+ '_W.txt', sep='\t')
             H_df.to_csv(output_directory + '/'+label+ '_H.txt', sep='\t')
-            
+
 
             return nsig
-        
+
 def main():
     ''' Run ARD NMF'''
     torch.multiprocessing.set_start_method('spawn')
@@ -142,7 +142,7 @@ def main():
         args.dtype = torch.float32
     elif args.dtype == 'Float16':
         args.dtype = torch.float16
-    
+
     if args.parquet:
         dataset = pd.read_parquet(args.data)
     elif args.feather:
@@ -167,11 +167,10 @@ def main():
         parameters = pd.read_csv(args.parameters_file,sep='\t')
         run_parameter_sweep(parameters,data,args,Beta)
     else:
-        W,H,cost,time = run_method_engine(data, args.a, args.phi, args.b, Beta, 
+        W,H,cost,time = run_method_engine(data, args.a, args.phi, args.b, Beta,
                                                    args.prior_on_W, args.prior_on_H, args.K0, args.tolerance,args.max_iter)
         nsig = write_output(W,H,data.channel_names,data.sample_names,args.output_dir,args.output_dir
                       )
 if __name__ == "__main__":
-    
-    main()
 
+    main()
