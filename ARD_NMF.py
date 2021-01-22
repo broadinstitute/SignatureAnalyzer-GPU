@@ -167,7 +167,7 @@ def run_method_engine(results, a, phi, b, Beta, W_prior, H_prior, K0, tolerance,
         iter+=1
     end_time = time.time()
     if use_val_set:
-        heldout_mask = (results.mask-1)*(-1) #now select heldout values (inverse of mask), to get validation set performance
+        heldout_mask = (mask-1)*(-1) #now select heldout values (inverse of mask), to get validation set performance
         l_ = beta_div(Beta,V,W,H,eps_,heldout_mask)
         cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0,heldout_mask)
         print("validation set objective=%s\tbeta_div=%s" % (cost_.cpu().numpy(),l_.cpu().numpy()))
