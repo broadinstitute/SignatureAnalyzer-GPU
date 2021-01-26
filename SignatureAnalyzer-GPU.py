@@ -88,7 +88,7 @@ def write_output(W, H, mask, channel_names, sample_names, output_directory, labe
             # Write W and H matrices
             W_df.to_csv(output_directory + '/'+label+ '_W.txt', sep='\t')
             H_df.to_csv(output_directory + '/'+label+ '_H.txt', sep='\t')
-            mask_df.to_csv(output_directory + '/'+label+ '_H.txt', sep='\t')
+            mask_df.to_csv(output_directory + '/'+label+ '_mask.txt', sep='\t')
 
 
             return nsig
