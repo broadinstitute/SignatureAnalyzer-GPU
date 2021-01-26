@@ -46,9 +46,9 @@ class ARD_NMF:
 
         if use_val_set:
             torch.manual_seed(0) #get the same mask each time
-            self.mask = (torch.rand(self.V.shape) > 0.2).int() #create mask, randomly mask ~20% of data in shape V. Only used when passed
+            self.mask = (torch.rand(self.V.shape) > 0.2).type(self.dtype) #create mask, randomly mask ~20% of data in shape V. Only used when passed
         else:
-            self.mask = torch.ones(self.V.shape)
+            self.mask = torch.ones(self.V.shape, dtype=self.dtype)
 
         self.a = a
         self.prior_W = prior_W
