@@ -78,15 +78,15 @@ def calculate_objective_function(Beta,V,W,H,lambda_,C, eps_,phi,K,mask):
 
 def update_H_poisson_L1(H, W, lambda_, phi, V, eps_,mask):
     #beta = 1 gamma(beta) = 1
-    denom = torch.sum(W, 0) + torch.div(phi, lambda_) + eps_
+    denom = torch.matmul(W.transpose(1,0), mask) + torch.div(phi, lambda_) + eps_
     V_ap = torch.matmul(W, H) + eps_
     V_res = torch.div(V*mask, V_ap)
-    update = torch.div(torch.matmul(W.transpose(1,0), V_res), denom.reshape(-1,1))
+    update = torch.div(torch.matmul(W.transpose(1,0), V_res), denom)
     return H * update
 
 def update_H_poisson_L2(H,W,lambda_,phi,V, eps_,mask):
     #beta = 1 zeta(beta) = 1/2
-    denom = torch.sum(W,0).reshape(-1,1) + torch.div(phi*H, lambda_.reshape(-1,1)) + eps_
+    denom = torch.matmul(W.transpose(1,0), mask) + torch.div(phi*H, lambda_.reshape(-1,1)) + eps_
     V_ap = torch.matmul(W, H) + eps_
     update = torch.pow(torch.div(torch.matmul(W.transpose(0,1), torch.div(V*mask, V_ap)), denom),0.5)
     return H * update
@@ -94,19 +94,20 @@ def update_H_poisson_L2(H,W,lambda_,phi,V, eps_,mask):
 def update_H_gaussian_L1(H,W,lambda_,phi,V,eps_,mask):
     #beta = 2 gamma(beta) = 1
     V_ap = torch.matmul(W, H) + eps_
-    denom = torch.matmul(W.transpose(0,1),V_ap) + torch.div(phi, lambda_ ).reshape(-1,1) + eps_
+    denom = torch.matmul(W.transpose(0,1),V_ap*mask) + torch.div(phi, lambda_ ).reshape(-1,1) + eps_
     update = torch.div(torch.matmul(W.transpose(0,1),V*mask),denom)
     return H * update
 
 def update_H_gaussian_L2(H,W,lambda_,phi,V,eps_,mask):
     #beta = 2 zeta(beta) = 1
-    denom = torch.matmul(W.transpose(0,1).type(V.dtype),torch.matmul(W, H).type(V.dtype) + eps_) + torch.div(phi * H, lambda_.reshape(-1,1)).type(V.dtype) + eps_
+    V_ap = torch.matmul(W, H).type(V.dtype) + eps_
+    denom = torch.matmul(W.transpose(0,1).type(V.dtype),V_ap*mask) + torch.div(phi * H, lambda_.reshape(-1,1)).type(V.dtype) + eps_
     update = torch.div(torch.matmul(W.transpose(0,1).type(V.dtype),V*mask),denom)
     return H * update.type(torch.float32)
 
 def update_W_poisson_L1(H, W, lambda_, phi, V, eps_,mask):
     #beta = 1 gamma(beta) = 1
-    denom = torch.sum(H, 1) + torch.div(phi, lambda_ ) + eps_
+    denom = torch.matmul(mask, H.transpose(1,0)) + torch.div(phi, lambda_ ) + eps_
     V_ap = torch.matmul(W, H) + eps_
     V_res = torch.div(V*mask, V_ap)
     update = torch.div(torch.matmul(V_res, H.transpose(0,1)), denom)
@@ -116,21 +117,21 @@ def update_W_poisson_L2(H,W,lambda_,phi,V,eps_,mask):
     # beta = 1 zeta(beta) = 1/2
     V_ap = torch.matmul(W,H) + eps_
     V_res = torch.div(V*mask, V_ap)
-    denom = torch.sum(H,1) + torch.div(phi*W,lambda_) + eps_
+    denom = torch.matmul(mask, H.transpose(1,0)) + torch.div(phi*W,lambda_) + eps_
     update = torch.pow(torch.div(torch.matmul(V_res,H.transpose(0,1)),denom),0.5)
     return W * update
 
 def update_W_gaussian_L1(H,W,lambda_,phi,V,eps_,mask):
     #beta = 2 gamma(beta) = 1
     V_ap = torch.matmul(W,H).type(V.dtype) + eps_
-    denom = torch.matmul(V_ap,H.transpose(0,1).type(V.dtype)) + torch.div(phi,lambda_).type(V.dtype) + eps_
+    denom = torch.matmul(V_ap*mask,H.transpose(0,1).type(V.dtype)) + torch.div(phi,lambda_).type(V.dtype) + eps_
     update = torch.div(torch.matmul(V*mask,H.transpose(0,1).type(V.dtype)),denom)
     return W * update.type(torch.float32)
 
 def update_W_gaussian_L2(H,W,lambda_,phi,V,eps_,mask):
     #beta = 2 zeta(beta) = 1
     V_ap = torch.matmul(W,H) + eps_
-    denom = torch.matmul(V_ap,H.transpose(0,1)) + torch.div(phi*W,lambda_) + eps_
+    denom = torch.matmul(V_ap*mask,H.transpose(0,1)) + torch.div(phi*W,lambda_) + eps_
     update = torch.div(torch.matmul(V*mask,H.transpose(0,1)),denom)
     return W * update
 
