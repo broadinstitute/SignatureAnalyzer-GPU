@@ -172,6 +172,6 @@ def run_method_engine(results, a, phi, b, Beta, W_prior, H_prior, K0, tolerance,
         cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0,heldout_mask)
         print("validation set objective=%s\tbeta_div=%s" % (cost_.cpu().numpy(),l_.cpu().numpy()))
     if send_end != None:
-        send_end.send([W.cpu().numpy(),H.cpu().numpy(),cost_.cpu().numpy(),end_time-start_time])
+        send_end.send([W.cpu().numpy(),H.cpu().numpy(),mask.cpu().numpy(),cost_.cpu().numpy(),end_time-start_time,])
     else:
-        return W.cpu().numpy(),H.cpu().numpy(),cost_.cpu().numpy(),end_time-start_time #returns validation set cost, if use_val_set=True
+        return W.cpu().numpy(),H.cpu().numpy(),mask.cpu().numpy(),cost_.cpu().numpy(),end_time-start_time #returns validation set cost, if use_val_set=True
