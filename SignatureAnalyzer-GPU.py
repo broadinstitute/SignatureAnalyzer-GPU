@@ -38,7 +38,7 @@ def run_parameter_sweep(parameters,data,args,Beta):
         for rank in range(num_processes):
             recv_end, send_end = mp.Pipe(False)
             p = mp.Process(target=run_method_engine, args=(data, parameters.iloc[idx+rank]['a'], parameters.iloc[idx+rank]['phi'], parameters.iloc[idx+rank]['b'], Beta,
-                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx+rank]['K0'], args.tolerance, args.max_iter, True, send_end, rank,))
+                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx+rank]['K0'], args.tolerance, args.max_iter, args.use_val_set, send_end, rank,))
             pipe_list.append(recv_end)
             processes.append(p)
             p.start()
@@ -57,7 +57,7 @@ def run_parameter_sweep(parameters,data,args,Beta):
         for i in range(len(parameters)-idx):
             idx+=i
             W,H,mask,cost,time = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta,
-                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx]['K0'], args.tolerance, args.max_iter, use_val_set=True)
+                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx]['K0'], args.tolerance, args.max_iter, args.use_val_set)
             nsig = write_output(W,H,mask,data.channel_names,data.sample_names,args.output_dir,
                       parameters['label'][idx])
             times.append(time)
@@ -135,6 +135,8 @@ def main():
                                                   'the following headers:(a,phi,b,prior_on_W,prior_on_H,Beta,label) label '
                                                   'indicates the output stem of the results from each run.', required = False
                                                     ,default = None)
+    parser.add_argument('--use_val_set', help='whether to hold out data as a validation set during training.'
+                                              ' defaults to True when parameters_file is provided, False otherwise.', required=False, default=None)
     args = parser.parse_args()
 
 
@@ -166,11 +168,14 @@ def main():
             sys.exit()
     data = ARD_NMF(dataset,args.objective)
     if args.parameters_file != None:
+        if args.use_val_set == None:
+             args.use_val_set = True
         parameters = pd.read_csv(args.parameters_file,sep='\t')
         run_parameter_sweep(parameters,data,args,Beta)
     else:
-        W,H,mask,cost,time = run_method_engine(data, args.a, args.phi, args.b, Beta,
-                                                   args.prior_on_W, args.prior_on_H, args.K0, args.tolerance,args.max_iter)
+        if args.use_val_set == None:
+             args.use_val_set=False
+        W,H,mask,cost,time = run_method_engine(data, args.a, args.phi, args.b, Beta, args.prior_on_W, args.prior_on_H, args.K0, args.tolerance,args.max_iter,args.use_val_set)
         nsig = write_output(W,H,mask,data.channel_names,data.sample_names,args.output_dir,args.output_dir
                       )
 if __name__ == "__main__":
