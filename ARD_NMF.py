@@ -30,6 +30,8 @@ class ARD_NMF:
         print('NMF class initialized.')
 
     def initalize_data(self,a,phi,b,prior_W,prior_H,Beta,K0,use_val_set,dtype = torch.float32):
+        
+        self.V = np.array(self.V) #when gets called in a loop as in run_parameter_sweep this can get updated to a torch tensor in a previous iteration which breaks some numpy functions
 
         if K0 == None:
             self.K0 = self.M
