@@ -27,10 +27,9 @@ class ARD_NMF:
         self.channel_names = self.dataset.index[zero_idx]
         self.sample_names = self.dataset.columns
         self.dtype = dtype
-        print('NMF class initalized.')
+        print('NMF class initialized.')
 
     def initalize_data(self,a,phi,b,prior_W,prior_H,Beta,K0,use_val_set,dtype = torch.float32):
-
 
         if K0 == None:
             self.K0 = self.M
