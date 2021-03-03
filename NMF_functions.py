@@ -78,7 +78,8 @@ def calculate_objective_function(Beta,V,W,H,lambda_,C, eps_,phi,K,mask):
 
 def update_H_poisson_L1(H, W, lambda_, phi, V, eps_,mask):
     #beta = 1 gamma(beta) = 1
-    denom = torch.matmul(W.transpose(1,0), mask) + torch.div(phi, lambda_) + eps_
+
+    denom = torch.matmul(W.transpose(1,0), mask) + torch.div(phi, lambda_).reshape(-1,1) + eps_
     V_ap = torch.matmul(W, H) + eps_
     V_res = torch.div(V*mask, V_ap)
     update = torch.div(torch.matmul(W.transpose(1,0), V_res), denom)
