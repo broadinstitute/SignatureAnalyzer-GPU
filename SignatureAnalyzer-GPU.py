@@ -55,6 +55,7 @@ def run_parameter_sweep(parameters,data,args,Beta):
 
     if idx < len(parameters):
         for i in range(len(parameters)-idx):
+            idx+=i
             print(idx)
             W,H,mask,cost,time = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta,
                                                    args.prior_on_W, args.prior_on_H, parameters.iloc[idx]['K0'], args.tolerance, args.max_iter, args.use_val_set)
@@ -63,7 +64,6 @@ def run_parameter_sweep(parameters,data,args,Beta):
             times.append(time)
             nsigs.append(nsig)
             objectives.append(cost)
-            idx+=i
     parameters['nsigs'] = nsigs
     parameters['objective'] = objectives
     parameters['times'] = times
