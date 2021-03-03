@@ -49,12 +49,13 @@ def run_parameter_sweep(parameters,data,args,Beta):
         nsig = [write_output(x[0],x[1],x[2],data.channel_names,data.sample_names,args.output_dir,
                       parameters['label'][idx+i]) for i,x in enumerate(result_list)]
         [nsigs.append(ns) for i,ns in enumerate(nsig)]
-        [times.append(time[3]) for i,time in enumerate(result_list)]
-        [objectives.append(obj[2]) for i,obj in enumerate(result_list)]
+        [times.append(time[4]) for i,time in enumerate(result_list)]
+        [objectives.append(obj[3]) for i,obj in enumerate(result_list)]
         idx += num_processes
 
     if idx < len(parameters):
         for i in range(len(parameters)-idx):
+            print(idx)
             W,H,mask,cost,time = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta,
                                                    args.prior_on_W, args.prior_on_H, parameters.iloc[idx]['K0'], args.tolerance, args.max_iter, args.use_val_set)
             nsig = write_output(W,H,mask,data.channel_names,data.sample_names,args.output_dir,
@@ -135,8 +136,15 @@ def main():
                                                   'the following headers:(a,phi,b,prior_on_W,prior_on_H,Beta,label) label '
                                                   'indicates the output stem of the results from each run.', required = False
                                                     ,default = None)
-    parser.add_argument('--use_val_set', help='whether to hold out data as a validation set during training.'
-                                              ' defaults to True when parameters_file is provided, False otherwise.', required=False, default=None)
+    parser.add_argument('--force_use_val_set', dest='use_val_set', action='store_true', help='override detaults and use a validation set no matter what,'
+                                                                                             'even when parameter search file is not passed.'
+                                                                                             'If neither --force_use_val_set or --force_no_val_set is passed, will default to create and evaluate on'
+                                                                                             'a held out validation set when parameters_file is provided, and not otherwise.')
+    parser.add_argument('--force_no_val_set', dest='use_val_set', action='store_false', help='override detaults and dont use a validation set no matter what,'
+                                                                                             'even when parameter search file is passed.'
+                                                                                             'If neither --force_use_val_set or --force_no_val_set is passed, will default to create and evaluate on'
+                                                                                             'a held out validation set when parameters_file is provided, and not otherwise.')
+    parser.set_defaults(use_val_set=None)
     args = parser.parse_args()
 
 
