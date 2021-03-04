@@ -29,6 +29,9 @@ def run_parameter_sweep(parameters,data,args,Beta):
     batches = int(len(parameters) / num_processes)
     idx = 0
     objectives = []
+    bdivs = []
+    val_objectives = []
+    val_bdivs = []
     nsigs = []
     times = []
     while idx <= len(parameters)-num_processes:
@@ -49,23 +52,32 @@ def run_parameter_sweep(parameters,data,args,Beta):
         nsig = [write_output(x[0],x[1],x[2],data.channel_names,data.sample_names,args.output_dir,
                       parameters['label'][idx+i]) for i,x in enumerate(result_list)]
         [nsigs.append(ns) for i,ns in enumerate(nsig)]
-        [times.append(time[4]) for i,time in enumerate(result_list)]
         [objectives.append(obj[3]) for i,obj in enumerate(result_list)]
+        [bdivs.append(obj[4]) for i,obj in enumerate(result_list)]
+        [val_objectives.append(obj[5]) for i,obj in enumerate(result_list)]
+        [val_bdivs.append(obj[6]) for i,obj in enumerate(result_list)]
+        [times.append(time[7]) for i,time in enumerate(result_list)]
         idx += num_processes
 
     if idx < len(parameters):
         for i in range(len(parameters)-idx):
             idx+=i
             print(idx)
-            W,H,mask,cost,time = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta,
+            W,H,mask,cost,bdiv,val_cost,val_bdiv,time = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta,
                                                    args.prior_on_W, args.prior_on_H, parameters.iloc[idx]['K0'], args.tolerance, args.max_iter, args.use_val_set)
             nsig = write_output(W,H,mask,data.channel_names,data.sample_names,args.output_dir,
                       parameters['label'][idx])
             times.append(time)
             nsigs.append(nsig)
             objectives.append(cost)
+            val_objectives.append(val_cost)
+            bdivs.append(bdiv)
+            val_bdivs.append(val_bdiv)
     parameters['nsigs'] = nsigs
-    parameters['objective'] = objectives
+    parameters['objective_trainset'] = objectives
+    parameters['bdiv_trainset'] = bdivs
+    parameters['objective_valset'] = val_objectives
+    parameters['bdiv_valset'] = val_bdivs
     parameters['times'] = times
     parameters.to_csv(args.output_dir + '/parameters_with_results.txt',sep='\t',index=None)
 
