@@ -167,12 +167,15 @@ def run_method_engine(results, a, phi, b, Beta, W_prior, H_prior, K0, tolerance,
 
         iter+=1
     end_time = time.time()
-    if use_val_set:
-        heldout_mask = 1-mask #now select heldout values (inverse of mask), to get validation set performance
-        l_ = beta_div(Beta,V,W,H,eps_,heldout_mask)
-        cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0,heldout_mask)
+    if use_val_set: #compute validation set performance
+        heldout_mask = 1-mask #now select heldout values (inverse of mask)
+        val_l_ = beta_div(Beta,V,W,H,eps_,heldout_mask)
+        val_cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0,heldout_mask)
         print("validation set objective=%s\tbeta_div=%s" % (cost_.cpu().numpy(),l_.cpu().numpy()))
-    if send_end != None:
-        send_end.send([W.cpu().numpy(),H.cpu().numpy(),mask.cpu().numpy(),cost_.cpu().numpy(),end_time-start_time,])
     else:
-        return W.cpu().numpy(),H.cpu().numpy(),mask.cpu().numpy(),cost_.cpu().numpy(),end_time-start_time #returns validation set cost, if use_val_set=True
+        val_l_ = None
+        val_cost_ = None
+    if send_end != None:
+        send_end.send([W.cpu().numpy(), H.cpu().numpy(), mask.cpu().numpy(), cost_.cpu().numpy(), l_.cpu().numpy(), val_cost_.cpu().numpy(), val_l_.cpu().numpy(), end_time-start_time,])
+    else:
+        return W.cpu().numpy(),H.cpu().numpy(),mask.cpu().numpy(),cost_.cpu().numpy(), l_.cpu().numpy(), val_cost_.cpu().numpy(), val_l_.cpu().numpy(), end_time-start_time 
