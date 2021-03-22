@@ -27,32 +27,37 @@ class ARD_NMF:
         self.channel_names = self.dataset.index[zero_idx]
         self.sample_names = self.dataset.columns
         self.dtype = dtype
-        print('NMF class initalized.')
+        print('NMF class initialized.')
 
-    def initalize_data(self,a,phi,b,prior_W,prior_H,Beta,K0,dtype = torch.float32):
+    def initalize_data(self,a,phi,b,prior_W,prior_H,Beta,K0,use_val_set,dtype = torch.float32):
         
-        
+        self.V = np.array(self.V) #when gets called in a loop as in run_parameter_sweep this can get updated to a torch tensor in a previous iteration which breaks some numpy functions
+
         if K0 == None:
             self.K0 = self.M
             self.number_of_active_components = self.M
         else:
             self.K0 = K0
             self.number_of_active_components = self.K0
-            
+
         if self.objective.lower() == 'poisson':
-
             self.phi = torch.tensor(phi,dtype=dtype,requires_grad=False)
-
         else:
             self.phi = torch.tensor(np.var(self.V)* phi,dtype=dtype,requires_grad=False)
-        
+
+        if use_val_set:
+            torch.manual_seed(0) #get the same mask each time
+            self.mask = (torch.rand(self.V.shape) > 0.2).type(self.dtype) #create mask, randomly mask ~20% of data in shape V. Only used when passed
+        else:
+            self.mask = torch.ones(self.V.shape, dtype=self.dtype)
+
         self.a = a
         self.prior_W = prior_W
         self.prior_H = prior_H
         self.C = []
         self.b = b
-        
-        
+
+
         W0 = np.multiply(np.random.uniform(size=[self.M, self.K0])+self.eps_.numpy(), np.sqrt(self.V_max))
         H0 = np.multiply(np.random.uniform(size=[self.K0, self.N])+self.eps_.numpy(), np.sqrt(self.V_max))
         L0 = np.sum(W0,axis=0) + np.sum(H0,axis=1)
@@ -66,23 +71,23 @@ class ARD_NMF:
         if self.b == None or self.b == 'None':
             # L1 ARD
             if self.prior_H == 'L1' and self.prior_W == 'L1':
-                
+
                 self.bcpu = np.sqrt(np.true_divide( (self.a - 1)*(self.a - 2) * np.mean(self.V),self.K0 ))
                 self.b = torch.tensor(
                     np.sqrt(np.true_divide( (self.a - 1)*(self.a - 2) * np.mean(self.V),self.K0 ))
                     ,dtype=self.dtype,requires_grad=False)
-                
+
                 self.C = torch.tensor(self.N + self.M + self.a + 1, dtype=self.dtype, requires_grad=False)
             # L2 ARD
             elif self.prior_H == 'L2' and self.prior_W == 'L2':
-                
+
                 self.bcpu = np.true_divide(np.pi * (self.a - 1) * np.mean(self.V),2*self.K0)
                 self.b = torch.tensor(
                     np.true_divide(np.pi * (self.a - 1) * np.mean(self.V),2*self.K0),
                     dtype=self.dtype,requires_grad=False)
-                
+
                 self.C = torch.tensor( (self.N + self.M)*0.5 + self.a + 1, dtype=self.dtype,requires_grad=False)
-                
+
             # L1 - L2 ARD
             elif self.prior_H == 'L1' and self.prior_W == 'L2':
                 self.bcpu = np.true_divide(np.mean(self.V)*np.sqrt(2)*gamma(self.a-3/2),self.K0*np.sqrt(np.pi)*gamma(self.a))
@@ -114,17 +119,20 @@ class ARD_NMF:
         print('NMF data and parameters set.')
     def get_number_of_active_components(self):
         self.number_of_active_components = torch.sum(torch.sum(self.W,0)> 0.0, dtype=self.dtype)
-        
-        
-        
-def run_method_engine(results, a, phi, b, Beta, W_prior, H_prior, K0, tolerance, max_iter, send_end = None, cuda_int = 0):
+
+
+
+def run_method_engine(results, a, phi, b, Beta, W_prior, H_prior, K0, tolerance, max_iter, use_val_set, send_end = None, cuda_int = 0):
+    """
+    - use_val_set: whether to use validation set. If false (default), set masks to all ones. Otherwise, use 0/1 mask to hold out 0's as validation set during training and will report objective function value for that set.
+    """
     # initalize the NMF run
-    results.initalize_data(a,phi,b,W_prior,H_prior,Beta,K0)
+    results.initalize_data(a,phi,b,W_prior,H_prior,Beta,K0,use_val_set)
     # specify GPU
     cuda_string = 'cuda:'+str(cuda_int)
     # copy data to GPU
-    W,H,V,Lambda,C,b0,eps_,phi = results.W.cuda(cuda_string),results.H.cuda(cuda_string),results.V.cuda(cuda_string),results.Lambda.cuda(cuda_string),results.C.cuda(cuda_string),results.b.cuda(cuda_string),results.eps_.cuda(cuda_string),results.phi.cuda(cuda_string)    
-    
+    W,H,V,Lambda,C,b0,eps_,phi,mask = results.W.cuda(cuda_string),results.H.cuda(cuda_string),results.V.cuda(cuda_string),results.Lambda.cuda(cuda_string),results.C.cuda(cuda_string),results.b.cuda(cuda_string),results.eps_.cuda(cuda_string),results.phi.cuda(cuda_string),results.mask.cuda(cuda_string)
+
     # tracking variables
     deltrack = 1000
     times = list()
@@ -142,25 +150,32 @@ def run_method_engine(results, a, phi, b, Beta, W_prior, H_prior, K0, tolerance,
     start_time = time.time()
     while deltrack >= tolerance and iter < max_iter:
         # compute updates
-        H,W,Lambda = method.forward(W,H,V,Lambda,C,b0,eps_,phi)
+        H,W,Lambda = method.forward(W,H,V,Lambda,C,b0,eps_,phi,mask)
         # compute objective and cost
-        l_ = beta_div(Beta,V,W,H,eps_)
-        cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0)
+        l_ = beta_div(Beta,V,W,H,eps_,mask) #this will compute loss on training set (excluding validation set, when mask is passed)
+        cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0,mask) #this will compute loss on training set (excluding validation set, when mask is passed)
         # update tracking
         deltrack = torch.max(torch.div(torch.abs(Lambda -lam_previous), (lam_previous+1e-5)))
         lam_previous = Lambda
-        
+
         # report to stdout
         if iter % report_freq == 0:
             print("nit=%s\tobjective=%s\tbeta_div=%s\tlambda=%s\tdel=%s\tK=%s\tsumW=%s\tsumH=%s" % (iter,cost_.cpu().numpy(),l_.cpu().numpy(),torch.sum(Lambda).cpu().numpy()
                                                                                                 ,deltrack.cpu().numpy(),
                                                                                                torch.sum((torch.sum(H,1) + torch.sum(W,0))>active_thresh).cpu().numpy()
                                                                                                 ,torch.sum(W).cpu().numpy(),torch.sum(H).cpu().numpy()))
-    
+
         iter+=1
     end_time = time.time()
-    if send_end != None:    
-        send_end.send([W.cpu().numpy(),H.cpu().numpy(),cost_.cpu().numpy(),end_time-start_time])
+    if use_val_set: #compute validation set performance
+        heldout_mask = 1-mask #now select heldout values (inverse of mask)
+        val_l_ = beta_div(Beta,V,W,H,eps_,heldout_mask)
+        val_cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0,heldout_mask)
+        print("validation set objective=%s\tbeta_div=%s" % (cost_.cpu().numpy(),l_.cpu().numpy()))
     else:
-        return W.cpu().numpy(),H.cpu().numpy(),cost_.cpu().numpy(),end_time-start_time
-        
+        val_l_ = None
+        val_cost_ = None
+    if send_end != None:
+        send_end.send([W.cpu().numpy(), H.cpu().numpy(), mask.cpu().numpy(), cost_.cpu().numpy(), l_.cpu().numpy(), val_cost_.cpu().numpy(), val_l_.cpu().numpy(), end_time-start_time,])
+    else:
+        return W.cpu().numpy(),H.cpu().numpy(),mask.cpu().numpy(),cost_.cpu().numpy(), l_.cpu().numpy(), val_cost_.cpu().numpy(), val_l_.cpu().numpy(), end_time-start_time 

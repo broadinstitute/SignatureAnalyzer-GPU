@@ -51,85 +51,89 @@ class NMF_algorithim(nn.Module):
             self.update_H = update_H_gaussian_L2
             self.lambda_update = update_lambda_L2
 
-    def forward(self,W, H, V, lambda_, C, b0, eps_, phi):
-        h_ = self.update_H(H, W, lambda_, phi, V, eps_)
-        w_ = self.update_W(h_, W, lambda_, phi, V, eps_)
+    def forward(self,W, H, V, lambda_, C, b0, eps_, phi, mask):
+        h_ = self.update_H(H, W, lambda_, phi, V, eps_, mask)
+        w_ = self.update_W(h_, W, lambda_, phi, V, eps_, mask)
         lam_ = self.lambda_update(w_,h_,b0,C,eps_)
         return h_, w_,lam_
 
 
 
-def beta_div(Beta,V,W,H,eps_):
-    
+def beta_div(Beta,V,W,H,eps_,mask):
     V_ap = torch.matmul(W, H).type(V.dtype) + eps_.type(V.dtype)
     if Beta == 2:
-        return SEloss(V,V_ap)/2
+        return SEloss(V*mask,V_ap*mask)/2
     if Beta == 1:
-        
         lr = torch.log(torch.div(V, V_ap))
-        return torch.sum((V*lr) - V + V_ap)
+        return torch.sum((V*mask*lr) - V*mask + V_ap*mask)
 
-def calculate_objective_function(Beta,V,W,H,lambda_,C, eps_,phi,K):
-    loss = beta_div(Beta,V,W,H,eps_)
+def calculate_objective_function(Beta,V,W,H,lambda_,C, eps_,phi,K,mask):
+    """
+    If a validation set is being used, this will mask heldout set when evaluating objective function during training.
+    Can calculate validation set objective value by passing inverse mask.
+    """
+    loss = beta_div(Beta,V,W,H,eps_,mask)
     cst = (K*C)*(1.0-torch.log(C))
     return torch.pow(phi,-1)*loss + (C*torch.sum(torch.log(lambda_ * C))) + cst
 
-def update_H_poisson_L1(H, W, lambda_, phi, V, eps_):
+def update_H_poisson_L1(H, W, lambda_, phi, V, eps_,mask):
     #beta = 1 gamma(beta) = 1
-    denom = torch.sum(W, 0) + torch.div(phi, lambda_) + eps_
+
+    denom = torch.matmul(W.transpose(1,0), mask) + torch.div(phi, lambda_).reshape(-1,1) + eps_
     V_ap = torch.matmul(W, H) + eps_
-    V_res = torch.div(V, V_ap)
-    update = torch.div(torch.matmul(W.transpose(1,0), V_res), denom.reshape(-1,1))
+    V_res = torch.div(V*mask, V_ap)
+    update = torch.div(torch.matmul(W.transpose(1,0), V_res), denom)
     return H * update
 
-def update_H_poisson_L2(H,W,lambda_,phi,V, eps_):
+def update_H_poisson_L2(H,W,lambda_,phi,V, eps_,mask):
     #beta = 1 zeta(beta) = 1/2
-    denom = torch.sum(W,0).reshape(-1,1) + torch.div(phi*H, lambda_.reshape(-1,1)) + eps_
+    denom = torch.matmul(W.transpose(1,0), mask) + torch.div(phi*H, lambda_.reshape(-1,1)) + eps_
     V_ap = torch.matmul(W, H) + eps_
-    update = torch.pow(torch.div(torch.matmul(W.transpose(0,1), torch.div(V, V_ap)), denom),0.5)
+    update = torch.pow(torch.div(torch.matmul(W.transpose(0,1), torch.div(V*mask, V_ap)), denom),0.5)
     return H * update
 
-def update_H_gaussian_L1(H,W,lambda_,phi,V,eps_):
+def update_H_gaussian_L1(H,W,lambda_,phi,V,eps_,mask):
     #beta = 2 gamma(beta) = 1
     V_ap = torch.matmul(W, H) + eps_
-    denom = torch.matmul(W.transpose(0,1),V_ap) + torch.div(phi, lambda_ ).reshape(-1,1) + eps_
-    update = torch.div(torch.matmul(W.transpose(0,1),V),denom)
+    denom = torch.matmul(W.transpose(0,1),V_ap*mask) + torch.div(phi, lambda_ ).reshape(-1,1) + eps_
+    update = torch.div(torch.matmul(W.transpose(0,1),V*mask),denom)
     return H * update
 
-def update_H_gaussian_L2(H,W,lambda_,phi,V,eps_):
+def update_H_gaussian_L2(H,W,lambda_,phi,V,eps_,mask):
     #beta = 2 zeta(beta) = 1
-    denom = torch.matmul(W.transpose(0,1).type(V.dtype),torch.matmul(W, H).type(V.dtype) + eps_) + torch.div(phi * H, lambda_.reshape(-1,1)).type(V.dtype) + eps_
-    update = torch.div(torch.matmul(W.transpose(0,1).type(V.dtype),V),denom)
+    V_ap = torch.matmul(W, H).type(V.dtype) + eps_
+    denom = torch.matmul(W.transpose(0,1).type(V.dtype),V_ap*mask) + torch.div(phi * H, lambda_.reshape(-1,1)).type(V.dtype) + eps_
+    update = torch.div(torch.matmul(W.transpose(0,1).type(V.dtype),V*mask),denom)
     return H * update.type(torch.float32)
 
-def update_W_poisson_L1(H, W, lambda_, phi, V, eps_):
+def update_W_poisson_L1(H, W, lambda_, phi, V, eps_,mask):
     #beta = 1 gamma(beta) = 1
-    denom = torch.sum(H, 1) + torch.div(phi, lambda_ ) + eps_
+    denom = torch.matmul(mask, H.transpose(1,0)) + torch.div(phi, lambda_ ) + eps_
     V_ap = torch.matmul(W, H) + eps_
-    V_res = torch.div(V, V_ap)
+    V_res = torch.div(V*mask, V_ap)
     update = torch.div(torch.matmul(V_res, H.transpose(0,1)), denom)
     return W * update
 
-def update_W_poisson_L2(H,W,lambda_,phi,V,eps_):
+def update_W_poisson_L2(H,W,lambda_,phi,V,eps_,mask):
     # beta = 1 zeta(beta) = 1/2
     V_ap = torch.matmul(W,H) + eps_
-    V_res = torch.div(V, V_ap)
-    denom = torch.sum(H,1) + torch.div(phi*W,lambda_) + eps_
+    V_res = torch.div(V*mask, V_ap)
+    denom = torch.matmul(mask, H.transpose(1,0)) + torch.div(phi*W,lambda_) + eps_
     update = torch.pow(torch.div(torch.matmul(V_res,H.transpose(0,1)),denom),0.5)
     return W * update
 
-def update_W_gaussian_L1(H,W,lambda_,phi,V,eps_):
+def update_W_gaussian_L1(H,W,lambda_,phi,V,eps_,mask):
     #beta = 2 gamma(beta) = 1
     V_ap = torch.matmul(W,H).type(V.dtype) + eps_
-    denom = torch.matmul(V_ap,H.transpose(0,1).type(V.dtype)) + torch.div(phi,lambda_).type(V.dtype) + eps_
-    update = torch.div(torch.matmul(V,H.transpose(0,1).type(V.dtype)),denom)
+    denom = torch.matmul(V_ap*mask,H.transpose(0,1).type(V.dtype)) + torch.div(phi,lambda_).type(V.dtype) + eps_
+    update = torch.div(torch.matmul(V*mask,H.transpose(0,1).type(V.dtype)),denom)
     return W * update.type(torch.float32)
 
-def update_W_gaussian_L2(H,W,lambda_,phi,V,eps_):
+def update_W_gaussian_L2(H,W,lambda_,phi,V,eps_,mask):
     #beta = 2 zeta(beta) = 1
     V_ap = torch.matmul(W,H) + eps_
-    denom = torch.matmul(V_ap,H.transpose(0,1)) + torch.div(phi*W,lambda_) + eps_
-    update = torch.div(torch.matmul(V,H.transpose(0,1)),denom)
+    denom = torch.matmul(V_ap*mask,H.transpose(0,1)) + torch.div(phi*W,lambda_) + eps_
+    update = torch.div(torch.matmul(V*mask,H.transpose(0,1)),denom)
     return W * update
 
 # update tolerance value for early stop criteria
@@ -150,4 +154,3 @@ def update_lambda_L1_L2(W,H,b0,C,eps_):
 
 def update_lambda_L2_L1(W,H,b0,C,eps_):
     return torch.div(0.5*torch.sum(torch.pow(W,2),0) + torch.sum(H,1)+b0,C)
-

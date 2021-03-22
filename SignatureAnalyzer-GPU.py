@@ -7,7 +7,7 @@ from scipy.special import gamma
 import os
 import pickle
 import torch
-import NMF_functions 
+import NMF_functions
 from ARD_NMF import ARD_NMF
 import feather
 from ARD_NMF import run_method_engine
@@ -29,6 +29,9 @@ def run_parameter_sweep(parameters,data,args,Beta):
     batches = int(len(parameters) / num_processes)
     idx = 0
     objectives = []
+    bdivs = []
+    val_objectives = []
+    val_bdivs = []
     nsigs = []
     times = []
     while idx <= len(parameters)-num_processes:
@@ -37,8 +40,8 @@ def run_parameter_sweep(parameters,data,args,Beta):
         processes = []
         for rank in range(num_processes):
             recv_end, send_end = mp.Pipe(False)
-            p = mp.Process(target=run_method_engine, args=(data, parameters.iloc[idx+rank]['a'], parameters.iloc[idx+rank]['phi'], parameters.iloc[idx+rank]['b'], Beta, 
-                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx+rank]['K0'], args.tolerance,args.max_iter, send_end, rank,))
+            p = mp.Process(target=run_method_engine, args=(data, parameters.iloc[idx+rank]['a'], parameters.iloc[idx+rank]['phi'], parameters.iloc[idx+rank]['b'], Beta,
+                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx+rank]['K0'], args.tolerance, args.max_iter, args.use_val_set, send_end, rank,))
             pipe_list.append(recv_end)
             processes.append(p)
             p.start()
@@ -46,30 +49,40 @@ def run_parameter_sweep(parameters,data,args,Beta):
         result_list = [x.recv() for x in pipe_list]
         for p in processes:
             p.join()
-        nsig = [write_output(x[0],x[1],data.channel_names,data.sample_names,args.output_dir,
+        nsig = [write_output(x[0],x[1],x[2],data.channel_names,data.sample_names,args.output_dir,
                       parameters['label'][idx+i]) for i,x in enumerate(result_list)]
         [nsigs.append(ns) for i,ns in enumerate(nsig)]
-        [times.append(time[3]) for i,time in enumerate(result_list)]
-        [objectives.append(obj[2]) for i,obj in enumerate(result_list)]
+        [objectives.append(obj[3]) for i,obj in enumerate(result_list)]
+        [bdivs.append(obj[4]) for i,obj in enumerate(result_list)]
+        [val_objectives.append(obj[5]) for i,obj in enumerate(result_list)]
+        [val_bdivs.append(obj[6]) for i,obj in enumerate(result_list)]
+        [times.append(time[7]) for i,time in enumerate(result_list)]
         idx += num_processes
-        
+
     if idx < len(parameters):
         for i in range(len(parameters)-idx):
             idx+=i
-            W,H,cost,time = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta, 
-                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx]['K0'], args.tolerance,args.max_iter)
-            nsig = write_output(W,H,data.channel_names,data.sample_names,args.output_dir,
+            print(idx)
+            W,H,mask,cost,bdiv,val_cost,val_bdiv,time = run_method_engine(data, parameters.iloc[idx]['a'], parameters.iloc[idx]['phi'], parameters.iloc[idx]['b'], Beta,
+                                                   args.prior_on_W, args.prior_on_H, parameters.iloc[idx]['K0'], args.tolerance, args.max_iter, args.use_val_set)
+            nsig = write_output(W,H,mask,data.channel_names,data.sample_names,args.output_dir,
                       parameters['label'][idx])
             times.append(time)
             nsigs.append(nsig)
             objectives.append(cost)
+            val_objectives.append(val_cost)
+            bdivs.append(bdiv)
+            val_bdivs.append(val_bdiv)
     parameters['nsigs'] = nsigs
-    parameters['objective'] = objectives
+    parameters['objective_trainset'] = objectives
+    parameters['bdiv_trainset'] = bdivs
+    parameters['objective_valset'] = val_objectives
+    parameters['bdiv_valset'] = val_bdivs
     parameters['times'] = times
     parameters.to_csv(args.output_dir + '/parameters_with_results.txt',sep='\t',index=None)
 
 
-def write_output(W, H, channel_names, sample_names, output_directory, label,  active_thresh = 1e-5):
+def write_output(W, H, mask, channel_names, sample_names, output_directory, label,  active_thresh = 1e-5):
             createFolder(output_directory)
             nonzero_idx = (np.sum(H, axis=1) * np.sum(W, axis=0)) > active_thresh
             W_active = W[:, nonzero_idx]
@@ -82,15 +95,17 @@ def write_output(W, H, channel_names, sample_names, output_directory, label,  ac
 
             sig_names = ['W' + str(j) for j in range(1, nsig + 1)]
             W_df = pd.DataFrame(data=W_final, index=channel_names, columns=sig_names)
-            H_df = pd.DataFrame(data=H_final, index=sig_names, columns=sample_names);
+            H_df = pd.DataFrame(data=H_final, index=sig_names, columns=sample_names)
+            mask_df = pd.DataFrame(mask, index=channel_names, columns=sample_names)
 
             # Write W and H matrices
             W_df.to_csv(output_directory + '/'+label+ '_W.txt', sep='\t')
             H_df.to_csv(output_directory + '/'+label+ '_H.txt', sep='\t')
-            
+            mask_df.to_csv(output_directory + '/'+label+ '_mask.txt', sep='\t')
+
 
             return nsig
-        
+
 def main():
     ''' Run ARD NMF'''
     torch.multiprocessing.set_start_method('spawn')
@@ -133,6 +148,15 @@ def main():
                                                   'the following headers:(a,phi,b,prior_on_W,prior_on_H,Beta,label) label '
                                                   'indicates the output stem of the results from each run.', required = False
                                                     ,default = None)
+    parser.add_argument('--force_use_val_set', dest='use_val_set', action='store_true', help='override detaults and use a validation set no matter what,'
+                                                                                             'even when parameter search file is not passed.'
+                                                                                             'If neither --force_use_val_set or --force_no_val_set is passed, will default to create and evaluate on'
+                                                                                             'a held out validation set when parameters_file is provided, and not otherwise.')
+    parser.add_argument('--force_no_val_set', dest='use_val_set', action='store_false', help='override detaults and dont use a validation set no matter what,'
+                                                                                             'even when parameter search file is passed.'
+                                                                                             'If neither --force_use_val_set or --force_no_val_set is passed, will default to create and evaluate on'
+                                                                                             'a held out validation set when parameters_file is provided, and not otherwise.')
+    parser.set_defaults(use_val_set=None)
     args = parser.parse_args()
 
 
@@ -142,7 +166,7 @@ def main():
         args.dtype = torch.float32
     elif args.dtype == 'Float16':
         args.dtype = torch.float16
-    
+
     if args.parquet:
         dataset = pd.read_parquet(args.data)
     elif args.feather:
@@ -164,14 +188,16 @@ def main():
             sys.exit()
     data = ARD_NMF(dataset,args.objective)
     if args.parameters_file != None:
+        if args.use_val_set == None:
+             args.use_val_set = True
         parameters = pd.read_csv(args.parameters_file,sep='\t')
         run_parameter_sweep(parameters,data,args,Beta)
     else:
-        W,H,cost,time = run_method_engine(data, args.a, args.phi, args.b, Beta, 
-                                                   args.prior_on_W, args.prior_on_H, args.K0, args.tolerance,args.max_iter)
-        nsig = write_output(W,H,data.channel_names,data.sample_names,args.output_dir,args.output_dir
+        if args.use_val_set == None:
+             args.use_val_set=False
+        W,H,mask,cost,time = run_method_engine(data, args.a, args.phi, args.b, Beta, args.prior_on_W, args.prior_on_H, args.K0, args.tolerance,args.max_iter,args.use_val_set)
+        nsig = write_output(W,H,mask,data.channel_names,data.sample_names,args.output_dir,args.output_dir
                       )
 if __name__ == "__main__":
-    
-    main()
 
+    main()
