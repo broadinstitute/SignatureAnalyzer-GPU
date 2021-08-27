@@ -48,6 +48,12 @@ class ARD_NMF:
             * Beta
             * K0: set to number of input features if not provided
         """
+        print('NMF class initialized.')
+
+    def initalize_data(self,a,phi,b,prior_W,prior_H,Beta,K0,use_val_set,dtype = torch.float32):
+        
+        self.V = np.array(self.V) #when gets called in a loop as in run_parameter_sweep this can get updated to a torch tensor in a previous iteration which breaks some numpy functions
+
         if K0 == None:
             self.K0 = self.M
             self.number_of_active_components = self.M
@@ -59,6 +65,12 @@ class ARD_NMF:
             self.phi = torch.tensor(phi,dtype=dtype,requires_grad=False)
         else:
             self.phi = torch.tensor(np.var(self.V)* phi,dtype=dtype,requires_grad=False)
+
+        if use_val_set:
+            torch.manual_seed(0) #get the same mask each time
+            self.mask = (torch.rand(self.V.shape) > 0.2).type(self.dtype) #create mask, randomly mask ~20% of data in shape V. Only used when passed
+        else:
+            self.mask = torch.ones(self.V.shape, dtype=self.dtype)
 
         self.a = a
         self.prior_W = prior_W
@@ -164,6 +176,7 @@ def run_method_engine(
     K0: int,
     tolerance: float,
     max_iter: int,
+    use_val_set: bool,
     report_freq: int = 10,
     active_thresh: float = 1e-5,
     send_end: Union[mpc.Connection, None] = None,
@@ -185,6 +198,9 @@ def run_method_engine(
         * K0: starting number of latent components
         * tolerance: end-point of optimization
         * max_iter: maximum number of iterations for algorithm
+        * use_val_set: use validation set for ARD-NMF
+          If False (default), set masks to all ones. 
+          Otherwise, use 0/1 mask to hold out 0's as validation set during training and will report objective function value for that set.
         * report_freq: how often to print updates
         * active_thresh: threshold for a latent component's impact on
             signature if the latent factor is less than this, it does not contribute
@@ -201,15 +217,15 @@ def run_method_engine(
         * signatures
     """
     # initalize the NMF run
-    results.initalize_data(a, phi, b, W_prior, H_prior, Beta, K0)
+    results.initalize_data(a, phi, b, W_prior, H_prior, Beta, K0, use_val_set)
     # specify GPU
     cuda_string = 'cuda:'+str(cuda_int)
     # copy data to GPU
     if torch.cuda.device_count() > 0 and cuda_int is not None:
         if verbose: print("   * Using GPU: {}".format(cuda_string))
-        W,H,V,Lambda,C,b0,eps_,phi = results.W.cuda(cuda_string),results.H.cuda(cuda_string),results.V.cuda(cuda_string),results.Lambda.cuda(cuda_string),results.C.cuda(cuda_string),results.b.cuda(cuda_string),results.eps_.cuda(cuda_string),results.phi.cuda(cuda_string)
+        W,H,V,Lambda,C,b0,eps_,phi,mask = results.W.cuda(cuda_string),results.H.cuda(cuda_string),results.V.cuda(cuda_string),results.Lambda.cuda(cuda_string),results.C.cuda(cuda_string),results.b.cuda(cuda_string),results.eps_.cuda(cuda_string),results.phi.cuda(cuda_string),results.mask.cuda(cuda_string)
     else:
-        W,H,V,Lambda,C,b0,eps_,phi = results.W,results.H,results.V,results.Lambda,results.C,results.b,results.eps_,results.phi
+        W,H,V,Lambda,C,b0,eps_,phi,mask = results.W,results.H,results.V,results.Lambda,results.C,results.b,results.eps_,results.phi,results.mask
         if verbose: print("   * Using CPU")
 
     # tracking variables
@@ -226,13 +242,14 @@ def run_method_engine(
     # set method
     method = NMF_algorithim(Beta, H_prior, W_prior)
 
+    start_time = time.time()
     while deltrack >= tolerance and iter < max_iter:
         # compute updates
-        H,W,Lambda = method.forward(W,H,V,Lambda,C,b0,eps_,phi)
+        H,W,Lambda = method.forward(W,H,V,Lambda,C,b0,eps_,phi,mask)
 
-        # compute objective and cost
-        l_ = beta_div(Beta,V,W,H,eps_)
-        cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0)
+        # compute objective and cost (excluding validation set, when mask is passed)
+        l_ = beta_div(Beta,V,W,H,eps_,mask)
+        cost_ = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0,mask)
 
         # update tracking
         deltrack = torch.max(torch.div(torch.abs(Lambda-lam_previous), lam_previous+1e-30))
@@ -264,15 +281,28 @@ def run_method_engine(
         'W_sum': torch.sum(W).cpu().numpy(),
         'H_sum': torch.sum(H).cpu().numpy()
     }
+    
+    end_time = time.time()
+    
+    #compute validation set performance
+    if use_val_set: 
+        heldout_mask = 1-mask #now select heldout values (inverse of mask)
+        report[iter]['b_div_val'] = beta_div(Beta,V,W,H,eps_,heldout_mask)
+        report[iter]['obj_val'] = calculate_objective_function(Beta,V,W,H,Lambda,C,eps_,phi,results.K0,heldout_mask)
+        #print("validation set objective=%s\tbeta_div=%s" % (cost_.cpu().numpy(),l_.cpu().numpy()))
+    else:
+        report[iter]['b_div_val'] = None
+        report[iter]['obj_val'] = None
+        
     print_report(iter,report,verbose,tag)
 
     if not verbose:
         stdout.write("\n")
     # ------------------------------------------------------------------- #
 
-    if send_end:
-        send_end.send([W.cpu().numpy(), H.cpu().numpy(), cost_.cpu().numpy()])
+    if send_end != None:
+        send_end.send([W.cpu().numpy(), H.cpu().numpy(), mask.cpu().numpy(), cost_.cpu().numpy(), l_.cpu().numpy(), report[iter]['b_div_val'].cpu().numpy(), report[iter]['obj_val'].cpu().numpy(), end_time-start_time,])
     else:
         final_report = pd.DataFrame.from_dict(report).T
         final_report.index.name = 'iter'
-        return W.cpu().numpy(), H.cpu().numpy(), cost_.cpu().numpy(), final_report, Lambda.cpu().numpy()
+        return W.cpu().numpy(), H.cpu().numpy(), cost_.cpu().numpy(), final_report, Lambda.cpu().numpy(), mask.cpu().numpy()

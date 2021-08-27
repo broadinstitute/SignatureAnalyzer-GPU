@@ -27,7 +27,11 @@ def run_parameter_sweep(parameters, data, args, Beta):
     batches = int(len(parameters) / num_processes)
     idx = 0
     objectives = []
+    bdivs = []
+    val_objectives = []
+    val_bdivs = []
     nsigs = []
+    times = []
     while idx <= len(parameters)-num_processes:
         print(idx)
         pipe_list = []
@@ -45,11 +49,13 @@ def run_parameter_sweep(parameters, data, args, Beta):
                 parameters.iloc[idx+rank]['K0'],
                 args.tolerance,
                 args.max_iter,
+                args.use_val_set,
                 args.report_frequency,
                 1e-5,
                 send_end,
                 rank,
                 ))
+
             pipe_list.append(recv_end)
             processes.append(p)
             p.start()
@@ -57,7 +63,7 @@ def run_parameter_sweep(parameters, data, args, Beta):
         result_list = [x.recv() for x in pipe_list]
         for p in processes:
             p.join()
-
+            
         nsig = [write_output(
             x[0],
             x[1],
@@ -68,13 +74,18 @@ def run_parameter_sweep(parameters, data, args, Beta):
             ) for i,x in enumerate(result_list)]
 
         [nsigs.append(ns) for i,ns in enumerate(nsig)]
-        [objectives.append(x[2]) for i,x in enumerate(result_list)]
+        [objectives.append(obj[3]) for i,obj in enumerate(result_list)]
+        [bdivs.append(obj[4]) for i,obj in enumerate(result_list)]
+        [val_objectives.append(obj[5]) for i,obj in enumerate(result_list)]
+        [val_bdivs.append(obj[6]) for i,obj in enumerate(result_list)]
+        [times.append(time[7]) for i,time in enumerate(result_list)]
+
         idx += num_processes
 
     if idx < len(parameters):
         for i in range(len(parameters)-idx):
             idx+=i
-            x = run_method_engine(
+            W,H,cost,final_report,lam,mask = run_method_engine(
                 data,
                 parameters.iloc[idx]['a'],
                 parameters.iloc[idx]['phi'],
@@ -85,6 +96,7 @@ def run_parameter_sweep(parameters, data, args, Beta):
                 parameters.iloc[idx]['K0'],
                 args.tolerance,
                 args.max_iter,
+                args.use_val_set,
                 args.report_frequency,
                 1e-5,
                 send_end,
@@ -92,21 +104,31 @@ def run_parameter_sweep(parameters, data, args, Beta):
             )
 
             nsig = write_output(
-                x[0],
-                x[1],
+                W,
+                H,
+                mask,
                 data.channel_names,
                 data.sample_names,
                 args.output_dir,
                 parameters['label'][idx])
 
             nsigs.append(nsig)
-            objectives.append(x[2])
+            objectives.append(cost)
+
+            times.append(time)
+            val_objectives.append(final_report['obj_val'])
+            bdivs.append(final_report['b_div'])
+            val_bdivs.append(final_report['b_div_val'])
 
     parameters['nsigs'] = nsigs
-    parameters['objective'] = objectives
+    parameters['objective_trainset'] = objectives
+    parameters['bdiv_trainset'] = bdivs
+    parameters['objective_valset'] = val_objectives
+    parameters['bdiv_valset'] = val_bdivs
+    parameters['times'] = times
     parameters.to_csv(args.output_dir + '/parameters_with_results.txt',sep='\t',index=None)
 
-def write_output(W, H, channel_names, sample_names, output_directory, label, active_thresh = 1e-5):
+def write_output(W, H, mask, channel_names, sample_names, output_directory, label,  active_thresh = 1e-5):
     createFolder(output_directory)
     nonzero_idx = (np.sum(H, axis=1) * np.sum(W, axis=0)) > active_thresh
     W_active = W[:, nonzero_idx]
@@ -119,12 +141,14 @@ def write_output(W, H, channel_names, sample_names, output_directory, label, act
 
     sig_names = ['W' + str(j) for j in range(1, nsig + 1)]
     W_df = pd.DataFrame(data=W_final, index=channel_names, columns=sig_names)
-    H_df = pd.DataFrame(data=H_final, index=sig_names, columns=sample_names);
+    H_df = pd.DataFrame(data=H_final, index=sig_names, columns=sample_names)
+    mask_df = pd.DataFrame(mask, index=channel_names, columns=sample_names)
 
     # Write W and H matrices
     W_df.to_csv(output_directory + '/'+label+ '_W.txt', sep='\t')
     H_df.to_csv(output_directory + '/'+label+ '_H.txt', sep='\t')
-
+    mask_df.to_csv(output_directory + '/'+label+ '_mask.txt', sep='\t')
+    
     return nsig
 
 def main():
@@ -167,8 +191,16 @@ def main():
     parser.add_argument('--parameters_file', help='allows running many different configurations of the NMF method on a multi'
                                                   'GPU system. To run in this mode provide this argument with a text file with '
                                                   'the following headers:(a,phi,b,prior_on_W,prior_on_H,Beta,label) label '
-                                                  'indicates the output stem of the results from each run.', required = False
-                                                  ,default = None)
+                                                  'indicates the output stem of the results from each run.', required = False, default = None)
+    parser.add_argument('--force_use_val_set', dest='use_val_set', action='store_true', help='override detaults and use a validation set no matter what,'
+                                                                                             'even when parameter search file is not passed.'
+                                                                                             'If neither --force_use_val_set or --force_no_val_set is passed, will default to create and evaluate on'
+                                                                                             'a held out validation set when parameters_file is provided, and not otherwise.')
+    parser.add_argument('--force_no_val_set', dest='use_val_set', action='store_false', help='override detaults and dont use a validation set no matter what,'
+                                                                                             'even when parameter search file is passed.'
+                                                                                             'If neither --force_use_val_set or --force_no_val_set is passed, will default to create and evaluate on'
+                                                                                             'a held out validation set when parameters_file is provided, and not otherwise.')
+    parser.set_defaults(use_val_set=None)
     args = parser.parse_args()
 
 
@@ -202,10 +234,14 @@ def main():
     data = ARD_NMF(dataset, args.objective)
 
     if args.parameters_file != None:
+        if args.use_val_set == None:
+             args.use_val_set = True
         parameters = pd.read_csv(args.parameters_file, sep='\t')
         run_parameter_sweep(parameters, data, args, Beta)
     else:
-        x = run_method_engine(
+        if args.use_val_set == None:
+            args.use_val_set=False
+        W,H,cost,final_report,lam,mask = run_method_engine(
             data,
             args.a,
             args.phi,
@@ -216,9 +252,10 @@ def main():
             args.K0,
             args.tolerance,
             args.max_iter,
+            args.use_val_set,
             args.report_frequency,
         )
-        nsig = write_output(x[0],x[1],data.channel_names,data.sample_names,args.output_dir,args.output_dir)
+        nsig = write_output(W,H,mask,data.channel_names,data.sample_names,args.output_dir,args.output_dir)
 
 if __name__ == "__main__":
     main()
