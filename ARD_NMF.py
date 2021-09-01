@@ -132,7 +132,7 @@ class ARD_NMF:
             elif self.prior_H == 'L1' and self.prior_W == 'L2':
                 self.C = torch.tensor(self.N + self.M/2 + self.a + 1, dtype=self.dtype,requires_grad=False)
             elif self.prior_H == 'L2' and self.prior_W == 'L1':
-                self.C = torch.constant(self.N/2 + self.M + self.a + 1, dtype=self.dtype,requires_grad=False)
+                self.C = torch.tensor(self.N/2 + self.M + self.a + 1, dtype=self.dtype,requires_grad=False)
 
         self.V = torch.tensor(self.V,dtype=self.dtype,requires_grad=False)
         if self.verbose: print('NMF data and parameters set.')
