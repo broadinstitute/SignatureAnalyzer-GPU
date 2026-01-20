@@ -176,7 +176,7 @@ def run_method_engine(
     K0: int,
     tolerance: float,
     max_iter: int,
-    use_val_set: bool,
+    use_val_set: bool = False,
     report_freq: int = 10,
     active_thresh: float = 1e-5,
     send_end: Union[mpc.Connection, None] = None,
