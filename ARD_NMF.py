@@ -109,15 +109,15 @@ class ARD_NMF:
 
             # L1 - L2 ARD
             elif self.prior_H == 'L1' and self.prior_W == 'L2':
-                self.bcpu = np.true_divide(np.mean(self.V)*np.sqrt(2)*gamma(self.a-3/2),self.K0*np.sqrt(np.pi)*gamma(self.a))
+                self.bcpu = np.true_divide(np.mean(self.V)*np.sqrt(np.pi)*gamma(self.a),self.K0*np.sqrt(2)*gamma(self.a-3/2))**(2/3)
                 self.b = torch.tensor(
-                    np.true_divide(np.mean(self.V)*np.sqrt(2)*gamma(self.a-3/2),self.K0*np.sqrt(np.pi)*gamma(self.a))
-                    ,dtype=self.dtype,requires_grad=False)
+                    np.true_divide(np.mean(self.V)*np.sqrt(np.pi)*gamma(self.a),self.K0*np.sqrt(2)*gamma(self.a-3/2))**(2/3),
+                    dtype=self.dtype,requires_grad=False)
                 self.C = torch.tensor(self.N + self.M/2 + self.a + 1, dtype=self.dtype)
             elif self.prior_H == 'L2' and self.prior_W == 'L1':
-                self.bcpu = np.true_divide(np.mean(self.V)*np.sqrt(2)*gamma(self.a-3/2),self.K0*np.sqrt(np.pi)*gamma(self.a))
+                self.bcpu = np.true_divide(np.mean(self.V)*np.sqrt(np.pi)*gamma(self.a),self.K0*np.sqrt(2)*gamma(self.a-3/2))**(2/3)
                 self.b = torch.tensor(
-                    np.true_divide(np.mean(self.V)*np.sqrt(2)*gamma(self.a-3/2),self.K0*np.sqrt(np.pi)*gamma(self.a)),
+                    np.true_divide(np.mean(self.V)*np.sqrt(np.pi)*gamma(self.a),self.K0*np.sqrt(2)*gamma(self.a-3/2))**(2/3),
                     dtype=self.dtype,requires_grad=False)
                 self.C = torch.tensor(self.N/2 + self.M + self.a + 1, dtype=self.dtype)
         else:
