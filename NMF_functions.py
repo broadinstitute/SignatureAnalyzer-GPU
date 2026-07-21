@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 SEloss = nn.MSELoss(reduction = 'sum')
 
-class NMF_algorithim(nn.Module):
+class NMF_algorithm(nn.Module):
     ''' implements ARD NMF from https://arxiv.org/pdf/1111.6085.pdf '''
     def __init__(self,Beta,H_prior,W_prior):
-        super(NMF_algorithim, self).__init__()
+        super(NMF_algorithm, self).__init__()
         # Beta paramaterizes the objective function
         # Beta = 1 induces a poisson objective
         # Beta = 2 induces a gaussian objective
